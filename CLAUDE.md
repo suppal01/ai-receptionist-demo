@@ -48,4 +48,5 @@ Standing rules for Claude Code in this repo. Read this and docs/plan.md at the s
 
 ## Current status
 
-- Increment 0 (skeleton): FastAPI app with POST /api/turn returning an echo reply, GET /health, Dockerfile, and pytest tests. No agent yet.
+- Increment 0 (skeleton): FastAPI app with POST /api/turn returning an echo reply, GET /health, Dockerfile, and pytest tests. Deployed to Cloud Run (project ai-rceptionist, region us-west1).
+- Increment 1 (guardrail + KB): keyword emergency guardrail runs first on every turn (app/guardrail/emergency_rules.yaml); 44-entry KB for the fictional practice Sparkle Dental (kb_seed/sparkle_kb.yaml) with in-memory keyword search (stands in for Postgres full-text search); fixed wording in app/agent/scripts.yaml. The agent is still a placeholder that answers from the top KB hit; no model yet. KB, rules and scripts approved by the product owner on 2026-09-29 (initial version).

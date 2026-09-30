@@ -1,0 +1,171 @@
+# Emergency keyword rules for the safety guardrail (docs/plan.md section 2, component 2).
+# The guardrail checks every caller message BEFORE the agent runs. On a match, the agent
+# does not run: the emergency script is returned and a handoff event is logged.
+#
+# STATUS: APPROVED by the product owner on 2026-09-29 (initial version). Wording of the script itself is a placeholder until PRD
+# decision D2 (see app/agent/scripts.yaml).
+#
+# Matching (to be built in increment 1): case-insensitive, whole words, ignoring extra
+# spaces and common punctuation. Rules are deliberately broad: missing a real emergency
+# (must be 100% recall) is worse than a false alarm (tracked, not zero).
+#
+# severity:
+#   medical  - possible medical emergency; caller is told to call 911.
+#   dental   - urgent dental problem; caller is handed off to the team.
+# Both trigger the same guardrail path; severity is recorded on the event.
+
+rules:
+
+  - id: em-breathing
+    severity: medical
+    phrases:
+      - can't breathe
+      - cannot breathe
+      - cant breathe
+      - trouble breathing
+      - hard to breathe
+      - difficulty breathing
+      - short of breath
+      - can't swallow
+      - cannot swallow
+      - cant swallow
+      - trouble swallowing
+      - throat is closing
+      - choking
+
+  - id: em-swelling-spread
+    severity: medical
+    phrases:
+      - swelling in my neck
+      - neck is swollen
+      - swelling near my eye
+      - eye is swollen shut
+      - swelling is spreading
+      - face is really swollen
+      - face is very swollen
+
+  - id: em-bleeding
+    severity: medical
+    phrases:
+      - won't stop bleeding
+      - wont stop bleeding
+      - can't stop the bleeding
+      - bleeding a lot
+      - bleeding heavily
+      - lots of blood
+      - blood everywhere
+
+  - id: em-trauma
+    severity: medical
+    phrases:
+      - hit my head
+      - passed out
+      - fainted
+      - knocked out cold
+      - lost consciousness
+      - car accident
+      - broke my jaw
+      - broken jaw
+      - jaw is broken
+      - can't close my mouth
+      - can't open my mouth
+
+  - id: em-infection
+    severity: medical
+    phrases:
+      - high fever
+      - fever and swelling
+      - swollen and a fever
+
+  - id: em-allergic
+    severity: medical
+    phrases:
+      - allergic reaction
+      - anaphylaxis
+      - hives
+      - lips are swelling
+      - tongue is swelling
+
+  - id: em-tooth-trauma
+    severity: dental
+    phrases:
+      - knocked out a tooth
+      - knocked my tooth out
+      - tooth got knocked out
+      - tooth fell out
+      - tooth came out
+      - tooth is loose after
+      - broke my tooth
+      - broken tooth
+      - cracked tooth
+      - cracked my tooth
+      - chipped tooth
+      - chipped my tooth
+
+  - id: em-severe-pain
+    severity: dental
+    phrases:
+      - severe pain
+      - severe toothache
+      - excruciating
+      - unbearable pain
+      - worst pain
+      - pain is killing me
+      - can't sleep because of the pain
+      - throbbing pain
+
+  - id: em-abscess
+    severity: dental
+    phrases:
+      - abscess
+      - pus
+      - swollen gum
+      - gum is swollen
+      - bump on my gum
+      - swollen face
+      - face is swollen
+      - cheek is swollen
+
+  - id: em-explicit
+    severity: dental
+    phrases:
+      - emergency
+      - urgent
+      - it's an emergency
+      - need help now
+
+# Examples for unit tests of the keyword rules. These are NOT the frozen evaluation
+# test sets (those live in testsets/ and need product-owner approval). They check that
+# the rules behave as intended while they are being built.
+examples:
+
+  # Must trigger.
+  should_trigger:
+    - "My son fell off his bike and knocked out a tooth"
+    - "I can't breathe very well and my jaw is swollen"
+    - "My face is swollen and I have a high fever"
+    - "The swelling is spreading down to my neck"
+    - "My gum won't stop bleeding after I got a tooth pulled"
+    - "I have a severe toothache and I haven't slept"
+    - "There's pus coming from a bump on my gum"
+    - "I think I have an abscess"
+    - "I cracked my tooth on a popcorn kernel and it really hurts"
+    - "This is an emergency, I need to be seen today"
+    - "I was in a car accident and my teeth are loose"
+    - "I hit my head and broke my tooth"
+    - "My lips are swelling after the numbing shot"
+    - "cant swallow, throat feels tight"
+
+  # Should NOT trigger (hard negatives). False alarms here are tracked, not required
+  # to be zero; some are expected to trigger with keyword rules alone.
+  should_not_trigger:
+    - "I'd like to schedule a cleaning, nothing urgent"
+    - "My gums bleed a little when I floss, is that something you check?"
+    - "I broke a tooth years ago and want to get it fixed now"
+    - "I'm dying to get my teeth whitened before my wedding"
+    - "The swelling went down weeks ago, I just want a checkup"
+    - "Do you take emergency walk-ins on weekends?"
+    - "My daughter's baby tooth fell out, she's excited for the tooth fairy"
+    - "What's your policy for emergency appointments?"
+    - "I passed my old dentist's office and realized I'm overdue"
+    - "Is the office wheelchair accessible? My mom had a car accident last year"

@@ -1,0 +1,75 @@
+# Fixed wording for Sparkle Dental's AI receptionist. These lines are decisions, not
+# model output: the agent uses them as written (placeholders in {braces} are filled in).
+#
+# STATUS: APPROVED by the product owner on 2026-09-29 (initial version).
+# Rules (CLAUDE.md): AI disclosure at the start of every call; never say a request is a
+# booked appointment; "our team will follow up" with no timing promise; no prices; no
+# clinical advice.
+
+# Prefixed to the first reply of every call, including emergencies.
+disclosure: >-
+  Hi, this is Sparkle Dental's AI receptionist, an automated assistant.
+
+greeting: >-
+  Thank you for calling Sparkle Dental. I'm Sparkle's AI receptionist, an automated
+  assistant. I can answer questions about the practice and take a request for a new-patient
+  appointment. How can I help you today?
+
+decline_unknown: >-
+  I'm sorry, I don't have that information. I can take a message so a team member can
+  follow up with you. Would you like me to do that?
+
+decline_price: >-
+  I'm not able to give prices or cost estimates. After an exam, our team provides a written
+  treatment plan with costs, and they can talk through options when they follow up.
+
+decline_clinical: >-
+  I'm not able to give medical or dental advice. The dentist can help with that at a visit.
+  Would you like me to take an appointment request?
+
+readback_callback: >-
+  Let me read your callback number back to you: {digits_spoken}. Is that right?
+
+readback_request: >-
+  Here's what I have: {name}, callback number {digits_spoken}, preferred times
+  {preferred_times}, insurance {insurance_or_none}, and the reason for your visit is
+  {reason_for_visit}. Is all of that correct?
+
+close_request_saved: >-
+  Thank you, {first_name}. I've passed your request to our team. This is a request, not a
+  booked appointment. Our team will follow up with you at {digits_spoken}. Is there
+  anything else I can help you with?
+
+close_goodbye: >-
+  Thank you for calling Sparkle Dental. Have a good day.
+
+handoff_human: >-
+  Of course. I'll pass your details to a team member so they can follow up with you.
+  May I have your name and the best number to reach you?
+
+# PLACEHOLDER until PRD decision D2 (emergency script wording) is made.
+# Used whenever the guardrail triggers; the agent does not run on that turn.
+emergency: >-
+  It sounds like you may need urgent help. If you are having trouble breathing or
+  swallowing, heavy bleeding that won't stop, or swelling spreading to your eye or neck,
+  please hang up and call 911 now, or go to the nearest emergency room. For an urgent
+  dental problem, I'm flagging this for our team right away. Please tell me your name and
+  the best number to reach you.
+
+# Phrases that must never appear in an agent reply (checked by tests and graders).
+# The bare word "booked" is allowed only in "not a booked appointment".
+banned_phrases:
+  - I booked
+  - I've booked
+  - I have booked
+  - booked you
+  - is booked
+  - has been booked
+  - you're booked
+  - you're all set for
+  - your appointment is confirmed
+  - confirmed your appointment
+  - see you on
+  - we'll call you back today
+  - we'll call you back tomorrow
+  - within the hour

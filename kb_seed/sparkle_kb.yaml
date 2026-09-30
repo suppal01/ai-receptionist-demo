@@ -1,0 +1,313 @@
+# Knowledge base for Sparkle Dental, a FICTIONAL practice. All details are invented.
+# Structure inspired by a real practice website; no wording or details copied.
+# Phone numbers use the 555-01xx range reserved for fiction.
+#
+# STATUS: APPROVED by the product owner on 2026-09-29 (initial version).
+# Optional 'keywords' are search aliases only; the agent never reads them to callers.
+# Rules (docs/plan.md section 4): no prices, no clinical advice. Every answer the agent
+# gives must come from one of these entries and cite its id.
+
+practice:
+  name: Sparkle Dental
+  status: approved
+  last_verified: 2026-09-29
+  approved_by: product owner
+
+entries:
+
+  # --- About the practice -------------------------------------------------
+
+  - id: kb-about-001
+    category: about
+    approved_text: >-
+      Sparkle Dental is a family dental practice that cares for patients of all ages,
+      from a child's first visit to seniors. We offer general, restorative, and cosmetic
+      dentistry in one office.
+
+  - id: kb-about-002
+    category: about
+    approved_text: >-
+      Sparkle Dental's approach is calm, judgment-free care. Whether it has been six months
+      or many years since your last dental visit, you are welcome here.
+
+  - id: kb-about-003
+    category: about
+    approved_text: >-
+      For every new patient, Sparkle Dental donates a children's toothbrush kit to the
+      Brightwater Community Food Bank.
+
+  # --- Location, hours, contact ------------------------------------------
+
+  - id: kb-location-001
+    keywords: [address, located, where, directions]
+    category: location
+    approved_text: >-
+      Sparkle Dental is at 450 Lakeview Drive, Suite 110, Brightwater, Oregon 97000,
+      on the first floor of the Lakeview Medical Plaza.
+
+  - id: kb-location-002
+    category: location
+    approved_text: >-
+      Free parking is available in the Lakeview Medical Plaza lot, including accessible
+      spaces next to the main entrance. The Route 12 bus stops at Lakeview Drive and 4th
+      Street, about a two-minute walk away.
+
+  - id: kb-location-003
+    category: location
+    approved_text: >-
+      The office is wheelchair accessible, with a step-free entrance, an accessible
+      restroom, and a treatment room with extra space for wheelchairs and walkers.
+
+  - id: kb-hours-001
+    keywords: [open, opening, close, closing, weekend]
+    category: hours
+    approved_text: >-
+      Sparkle Dental's hours are Monday to Thursday, 8:00 AM to 5:00 PM, and Friday,
+      8:00 AM to 1:00 PM. The office is closed on Saturday and Sunday.
+
+  - id: kb-hours-002
+    category: hours
+    approved_text: >-
+      The office closes for lunch from 12:00 PM to 1:00 PM, Monday to Thursday. Phone
+      messages left during lunch are returned in the afternoon.
+
+  - id: kb-hours-003
+    category: hours
+    approved_text: >-
+      Sparkle Dental is closed on New Year's Day, Memorial Day, Independence Day,
+      Labor Day, Thanksgiving Day and the day after, and December 24 and 25.
+
+  - id: kb-contact-001
+    category: contact
+    approved_text: >-
+      Sparkle Dental's phone number is (503) 555-0100. The website is sparkledental.example
+      and the email address is hello@sparkledental.example. Please do not send personal
+      health details by email.
+
+  - id: kb-languages-001
+    category: languages
+    approved_text: >-
+      Team members at Sparkle Dental speak English and Spanish. If you prefer Spanish,
+      say so and a Spanish-speaking team member will follow up with you.
+
+  # --- Team -----------------------------------------------------------------
+
+  - id: kb-team-001
+    category: team
+    approved_text: >-
+      Sparkle Dental's dentists are Dr. Maya Okafor, DDS, who founded the practice, and
+      Dr. Daniel Reyes, DMD. Both dentists see adults and children.
+
+  - id: kb-team-002
+    category: team
+    approved_text: >-
+      Dr. Daniel Reyes speaks Spanish. Patients who would like a Spanish-speaking dentist
+      can ask for an appointment with him.
+
+  # --- Services ---------------------------------------------------------------
+
+  - id: kb-services-general-001
+    category: services
+    approved_text: >-
+      General dentistry at Sparkle Dental includes checkups and exams, cleanings,
+      digital x-rays, fluoride treatments, sealants, and oral cancer screenings.
+
+  - id: kb-services-general-002
+    category: services
+    approved_text: >-
+      Sparkle Dental offers deep cleanings (scaling and root planing) and ongoing gum
+      care. The dentist decides at an exam whether a deep cleaning is needed.
+
+  - id: kb-services-restorative-001
+    category: services
+    approved_text: >-
+      Restorative services at Sparkle Dental include tooth-colored fillings, crowns,
+      bridges, root canals on front and side teeth, and dentures.
+
+  - id: kb-services-restorative-002
+    category: services
+    approved_text: >-
+      Sparkle Dental restores dental implants, meaning it places the crown on an implant.
+      Implant surgery, root canals on back molars, and wisdom tooth removal are referred
+      to specialists nearby.
+
+  - id: kb-services-cosmetic-001
+    category: services
+    approved_text: >-
+      Cosmetic services at Sparkle Dental include teeth whitening (in office and
+      take-home), porcelain veneers, tooth bonding, and clear aligners.
+
+  - id: kb-services-kids-001
+    keywords: [kids, kid, child, pediatric, toddler, baby]
+    category: services
+    approved_text: >-
+      Sparkle Dental sees children from their first birthday or first tooth, whichever
+      comes first. Children's visits include cleanings, exams, fluoride, and sealants.
+
+  - id: kb-services-notoffered-001
+    category: services
+    approved_text: >-
+      Sparkle Dental does not offer orthodontic braces, sleep apnea appliances, or
+      sedation beyond nitrous oxide (laughing gas). Our team can suggest specialists for
+      these services.
+
+  - id: kb-services-comfort-001
+    category: services
+    approved_text: >-
+      Nitrous oxide (laughing gas) is available at Sparkle Dental for patients who feel
+      anxious. The dentist decides at the visit whether it is suitable.
+
+  # --- Comfort and technology ----------------------------------------------------
+
+  - id: kb-comfort-001
+    category: comfort
+    approved_text: >-
+      Sparkle Dental offers a comfort menu at every visit: warm blankets, noise-canceling
+      headphones with music or podcasts, ceiling-mounted TVs, and neck pillows.
+
+  - id: kb-comfort-002
+    category: comfort
+    approved_text: >-
+      If you feel nervous about dental visits, tell us when you request an appointment.
+      Your dentist will go at your pace, explain each step first, and you can ask for a
+      break at any time.
+
+  - id: kb-technology-001
+    category: technology
+    approved_text: >-
+      Sparkle Dental uses digital x-rays, intraoral cameras so you can see what the
+      dentist sees, and digital impressions instead of impression trays.
+
+  # --- Insurance and payment (no prices) ------------------------------------
+
+  - id: kb-insurance-001
+    category: insurance
+    approved_text: >-
+      Sparkle Dental is in network with these dental plans: Delta Dental PPO, MetLife
+      PDP Plus, Cigna Dental PPO, Aetna Dental PPO, Guardian DentalGuard Preferred, and
+      United Concordia Dental PPO.
+
+  - id: kb-insurance-002
+    category: insurance
+    approved_text: >-
+      For other PPO dental plans, Sparkle Dental is out of network but will submit claims
+      to your insurance for you. Your plan may cover less than it would in network.
+
+  - id: kb-insurance-003
+    category: insurance
+    approved_text: >-
+      Sparkle Dental does not accept dental HMO (DHMO) plans or Medicaid dental plans,
+      including the Oregon Health Plan.
+
+  - id: kb-insurance-004
+    category: insurance
+    approved_text: >-
+      To check your coverage, our team needs the name of your insurance carrier and plan.
+      When the team follows up, they can verify your benefits before your first visit.
+
+  - id: kb-payment-001
+    category: payment
+    approved_text: >-
+      Sparkle Dental accepts cash, debit cards, Visa, Mastercard, American Express,
+      Discover, HSA and FSA cards, and CareCredit financing.
+
+  - id: kb-payment-002
+    category: payment
+    approved_text: >-
+      For patients without dental insurance, Sparkle Dental offers a new-patient special
+      and the Sparkle Smile Plan, an in-house membership that covers routine cleanings,
+      exams, and x-rays with a discount on other treatment. Our team can explain current
+      pricing when they follow up.
+
+  - id: kb-payment-003
+    category: payment
+    approved_text: >-
+      Sparkle Dental does not give prices or cost estimates over the phone without an
+      exam. After an exam, the team provides a written treatment plan with costs.
+
+  # --- New patients ------------------------------------------------------------
+
+  - id: kb-newpatient-001
+    category: new_patients
+    approved_text: >-
+      Yes, Sparkle Dental is accepting new patients of all ages.
+
+  - id: kb-newpatient-002
+    category: new_patients
+    approved_text: >-
+      A first visit at Sparkle Dental usually includes a review of your health history,
+      digital x-rays, an exam with the dentist, and a cleaning if time allows. Plan for
+      about 90 minutes.
+
+  - id: kb-newpatient-003
+    category: new_patients
+    approved_text: >-
+      For your first visit, bring a photo ID, your dental insurance card if you have one,
+      and a list of any medications you take.
+
+  - id: kb-newpatient-004
+    category: new_patients
+    approved_text: >-
+      New-patient forms are sent by text or email after your appointment is scheduled.
+      Please complete them before your visit, or arrive 15 minutes early to fill them out.
+
+  - id: kb-newpatient-005
+    category: new_patients
+    approved_text: >-
+      If you have recent x-rays or records from another dentist, our team can request
+      them with your written permission.
+
+  # --- Scheduling and policies ---------------------------------------------------------
+
+  - id: kb-scheduling-001
+    category: scheduling
+    approved_text: >-
+      The receptionist on this line can take an appointment request, but cannot book
+      appointments directly. A team member reviews each request and follows up to
+      schedule a time.
+
+  - id: kb-scheduling-002
+    category: scheduling
+    approved_text: >-
+      To request an appointment, the team needs your name, a callback number, times that
+      usually work for you, your insurance carrier if you have one, and the reason for
+      your visit.
+
+  - id: kb-policy-cancel-001
+    keywords: [cancellation, cancelling, canceling, no-show]
+    category: policies
+    approved_text: >-
+      Sparkle Dental asks for at least 24 hours' notice to cancel or reschedule an
+      appointment.
+
+  - id: kb-policy-late-001
+    category: policies
+    approved_text: >-
+      If you arrive more than 15 minutes late, the team may need to shorten your visit or
+      reschedule it.
+
+  - id: kb-policy-minors-001
+    category: policies
+    approved_text: >-
+      Patients under 18 must have a parent or legal guardian with them at their first
+      visit, and a parent or guardian must sign their forms.
+
+  - id: kb-policy-animals-001
+    category: policies
+    approved_text: >-
+      Service animals are welcome at Sparkle Dental. Pets are not allowed in the office.
+
+  # --- Emergencies (general info only; the guardrail handles live emergencies) ---
+
+  - id: kb-emergency-001
+    category: emergencies
+    approved_text: >-
+      Sparkle Dental keeps time open each weekday for urgent dental problems for current
+      and new patients. Our team decides how soon you can be seen when they follow up.
+
+  - id: kb-emergency-002
+    category: emergencies
+    approved_text: >-
+      After hours, Sparkle Dental's voicemail gives the on-call instructions. For a medical
+      emergency, such as trouble breathing or swallowing, call 911 or go to the nearest
+      emergency room.
