@@ -43,6 +43,37 @@ close_request_saved: >-
 close_goodbye: >-
   Thank you for calling Sparkle Dental. Have a good day.
 
+# Next-step prompts chosen by code while collecting a request (added 2026-09-30; not yet
+# approved by the product owner).
+ask_name: >-
+  I can take a request for our team. May I have your full name?
+
+ask_callback_number: >-
+  What's the best phone number for our team to reach you?
+
+ask_preferred_times: >-
+  What days or times usually work best for you?
+
+ask_insurance_carrier: >-
+  Do you have dental insurance? If so, which carrier and plan?
+
+ask_reason_for_visit: >-
+  And what's the main reason for your visit?
+
+invalid_callback: >-
+  Sorry, I didn't catch a full 10-digit phone number. Could you say it again, including
+  the area code?
+
+ask_correction: >-
+  Sorry about that. What should I change?
+
+ask_anything_else: >-
+  Is there anything else I can help you with?
+
+ask_how_help: >-
+  I can answer questions about Sparkle Dental or take a request for a new-patient
+  appointment. What would you like to do?
+
 handoff_human: >-
   Of course. I'll pass your details to a team member so they can follow up with you.
   May I have your name and the best number to reach you?

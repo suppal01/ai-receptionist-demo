@@ -23,9 +23,9 @@ def template(name: str) -> str:
     return _load()[name]
 
 
-def script(name: str, **fields: str) -> str:
+def script(script_name: str, /, **fields: str) -> str:
     """Return a script with its {placeholders} filled in. A missing field raises KeyError."""
-    return template(name).format_map(fields)
+    return template(script_name).format_map(fields)
 
 
 def banned_phrases() -> list[str]:

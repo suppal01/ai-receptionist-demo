@@ -1,14 +1,14 @@
-"""HTTP routes. Each turn runs the guardrail first, then the agent (docs/plan.md section 2)."""
-
-import uuid
+"""HTTP routes. Each turn goes through the engine: guardrail first, then the agent."""
 
 from fastapi import APIRouter
 
-from app import agent, guardrail
-from app.agent.scripts import script
+from app.agent.engine import Engine
+from app.agent.model import model_from_env
 from app.api.schemas import TurnRequest, TurnResponse
 
 router = APIRouter()
+
+engine = Engine(model_from_env())
 
 
 @router.get("/health")
@@ -20,27 +20,11 @@ def health() -> dict[str, str]:
 @router.post("/api/turn", response_model=TurnResponse)
 def turn(req: TurnRequest) -> TurnResponse:
     """Handle one caller message. An empty call_id starts a new call."""
-    first_turn = not req.call_id
-    call_id = req.call_id or str(uuid.uuid4())
-
-    match = guardrail.check(req.text)
-    guard_event = {
-        "type": "guardrail",
-        "payload": {"triggered": match is not None}
-        | ({"rule_id": match.rule_id, "severity": match.severity, "phrase": match.phrase} if match else {}),
-    }
-
-    if match:
-        reply, stage = script("emergency"), "emergency"
-        events = [
-            guard_event,
-            {"type": "handoff", "payload": {"reason": "emergency", "severity": match.severity}},
-        ]
-    else:
-        reply, stage, agent_events = agent.respond(req.text)
-        events = [guard_event, *agent_events]
-
-    if first_turn:
-        reply = f"{script('disclosure')} {reply}"
-
-    return TurnResponse(call_id=call_id, reply=reply, stage=stage, events=events, ended=False)
+    result = engine.handle(req.call_id, req.text)
+    return TurnResponse(
+        call_id=result.call_id,
+        reply=result.reply,
+        stage=result.stage,
+        events=result.events,
+        ended=result.ended,
+    )
