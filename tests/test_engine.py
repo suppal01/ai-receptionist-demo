@@ -148,6 +148,20 @@ def test_all_fields_lead_to_a_scripted_read_back():
     assert "Priya Shah" in result.reply
 
 
+@pytest.mark.parametrize(
+    "said, read_back",
+    [
+        ("Weekday mornings", "preferred times weekday mornings"),
+        ("Monday mornings", "preferred times Monday mornings"),
+        ("PPO hours", "preferred times PPO hours"),
+    ],
+)
+def test_read_back_lowercases_a_capitalized_phrase_but_not_names(said, read_back):
+    engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"preferred_times": said})))
+    result = engine.handle("", "everything at once")
+    assert read_back in result.reply
+
+
 # --- Saving only after a confirmed read-back ----------------------------------------------
 
 

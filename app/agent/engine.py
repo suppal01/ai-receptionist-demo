@@ -268,9 +268,9 @@ class Engine:
             "readback_request",
             name=call.fields["name"],
             digits_spoken=spoken,
-            preferred_times=call.fields["preferred_times"],
+            preferred_times=_mid_sentence(call.fields["preferred_times"]),
             insurance_or_none="no insurance" if insurance.lower() in ("none", "no") else insurance,
-            reason_for_visit=call.fields["reason_for_visit"],
+            reason_for_visit=_mid_sentence(call.fields["reason_for_visit"]),
         )
 
     def _save(self, call: CallState, events: list[Event]) -> str:
@@ -294,6 +294,21 @@ class Engine:
         if call.stage != to:
             events.append({"type": "route", "payload": {"from": call.stage, "to": to}})
             call.stage = to
+
+
+_PROPER_FIRST_WORDS = {
+    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+    "January", "February", "March", "April", "May", "June", "July", "August",
+    "September", "October", "November", "December",
+}
+
+
+def _mid_sentence(value: str) -> str:
+    """'Weekday mornings' reads as '... weekday mornings'; days, months and acronyms keep caps."""
+    first = value.split()[0] if value.split() else ""
+    if first[:1].isupper() and not first.isupper() and first not in _PROPER_FIRST_WORDS:
+        return value[0].lower() + value[1:]
+    return value
 
 
 def _check(name: str, failures: list[str]) -> Event:

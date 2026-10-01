@@ -69,6 +69,17 @@ class GeminiModel:
             )
         return self._client
 
+    def warm_up(self) -> None:
+        """Open the connection and fetch credentials before the first caller arrives.
+
+        A metadata request (free, no tokens): it took ~3 s cold, and the first real call
+        after it ~1 s instead of 11-14 s. Failure is harmless; the first turn is just slower.
+        """
+        try:
+            self.client.models.get(model=self.name)
+        except Exception:
+            pass
+
     def _config(self, allowed: list[str]) -> types.GenerateContentConfig:
         return types.GenerateContentConfig(
             system_instruction=SYSTEM,

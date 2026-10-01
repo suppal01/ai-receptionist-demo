@@ -23,6 +23,9 @@ class FakeGenaiClient:
         self.requests = []
         self.models = self
 
+    def get(self, model):
+        self.requests.append({"get": model})
+
     def generate_content(self, model, contents, config):
         self.requests.append({"model": model, "contents": list(contents), "config": config})
         item = self.responses.pop(0)
@@ -86,6 +89,20 @@ def test_invalid_submit_returns_a_safe_interpretation():
     result = GeminiModel("gemini-test", client=client).interpret(CTX, lambda q: [])
     assert result.intents == ["other"]
     assert result.error
+
+
+def test_warm_up_makes_a_metadata_request_not_a_generation():
+    client = FakeGenaiClient([])
+    GeminiModel("gemini-test", client=client).warm_up()
+    assert client.requests == [{"get": "gemini-test"}]
+
+
+def test_warm_up_failure_is_swallowed():
+    class Broken(FakeGenaiClient):
+        def get(self, model):
+            raise RuntimeError("offline")
+
+    GeminiModel("gemini-test", client=Broken([])).warm_up()  # must not raise
 
 
 def test_prompt_carries_stage_missing_fields_and_caller_text():
