@@ -6,14 +6,14 @@ Every turn:
   3. Model interprets the message (intents, fields, draft answer), calling search_kb.
   4. Code checks the draft and decides the next step: grounding, price/clinical declines,
      field validation, stage transitions, scripted read-back and close.
-  5. Banned-phrase backstop, save state, return the reply and events.
+  5. Banned-phrase backstop, then record the turn (one write) and log one metadata line.
 
 The model never picks the stage, saves a request, or hands off. Code does.
 """
 
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from app import guardrail, kb
@@ -29,18 +29,11 @@ from app.agent.model import FIELD_ORDER, AgentModel, Interpretation, TurnContext
 from app.agent.prompts import PROMPT_VERSION
 from app.agent.request_store import REQUIRED_FIELDS, RequestRecord
 from app.agent.scripts import script
+from app.agent.state import CallState
+from app.db.store import CallStore, MemoryStore
+from app.logs import log
 
 Event = dict[str, Any]
-
-
-@dataclass
-class CallState:
-    id: str
-    stage: str = "open"
-    request_type: str | None = None
-    fields: dict[str, str] = field(default_factory=dict)
-    history: list[dict[str, str]] = field(default_factory=list)
-    ended: bool = False
 
 
 @dataclass
@@ -53,23 +46,27 @@ class TurnResult:
 
 
 class Engine:
-    def __init__(self, model: AgentModel):
+    def __init__(self, model: AgentModel, store: CallStore | None = None, source: str = "api"):
         self.model = model
-        # In memory until the database increment.
+        self.store = store or MemoryStore()
+        self.source = source  # "api" for the endpoint, "simulator" for scripted and eval runs
+        # Calls this engine has handled; a fallback if the store can't be read.
         self.calls: dict[str, CallState] = {}
+        # Requests saved by this engine (also written to the store).
         self.requests: dict[str, RequestRecord] = {}
 
     # --- One turn ---------------------------------------------------------------------------
 
     def handle(self, call_id: str | None, text: str) -> TurnResult:
         first_turn = not call_id
-        call = self.calls.get(call_id) if call_id else None
-        if call is None:
-            call = CallState(id=call_id or str(uuid.uuid4()))
-            self.calls[call.id] = call
-
         events: list[Event] = []
         parts: list[str] = []
+        self._new_requests: list[RequestRecord] = []
+
+        call = self._find_call(call_id, events) if call_id else None
+        if call is None:
+            call = CallState(id=call_id or str(uuid.uuid4()))
+        self.calls[call.id] = call
 
         match = guardrail.check(text)
         events.append(
@@ -89,6 +86,7 @@ class Engine:
                 {"type": "handoff", "payload": {"reason": "emergency", "severity": match.severity}}
             )
             call.request_type = "urgent"
+            call.outcome = "emergency"
             self._move(call, "emergency", events)
         else:
             self._agent_turn(call, text, events, parts)
@@ -102,7 +100,51 @@ class Engine:
             reply = f"{script('disclosure')} {reply}"
 
         call.history += [{"role": "caller", "text": text}, {"role": "agent", "text": reply}]
+        self._record(call, text, reply, events)
         return TurnResult(call.id, reply, call.stage, events, call.ended)
+
+    def _find_call(self, call_id: str, events: list[Event]) -> CallState | None:
+        """The store is the source of truth: another instance may have handled the last turn.
+        The in-memory copy is only a fallback when the store can't be read."""
+        try:
+            stored = self.store.load_call(call_id)
+            if stored is not None:
+                return stored
+        except Exception as e:
+            events.append({"type": "storage", "payload": {"op": "load", "error": str(e)}})
+            log("ERROR", "storage load failed", call_id=call_id, error=str(e))
+        return self.calls.get(call_id)
+
+    def _record(self, call: CallState, text: str, reply: str, events: list[Event]) -> None:
+        """Write the turn to the store, then log it. A storage failure never blocks the reply."""
+        try:
+            self.store.record_turn(
+                call, text, reply, events, self._new_requests,
+                agent_model=self.model.name, prompt_version=PROMPT_VERSION, source=self.source,
+            )
+        except Exception as e:
+            events.append({"type": "storage", "payload": {"op": "record", "error": str(e)}})
+            log("ERROR", "storage record failed", call_id=call.id, error=str(e))
+        model = next((e["payload"] for e in events if e["type"] == "model"), {})
+        log(
+            "INFO",
+            "turn",
+            call_id=call.id,
+            seq=len(call.history) // 2,
+            stage=call.stage,
+            outcome=call.outcome,
+            ended=call.ended,
+            guardrail_triggered=events[0]["payload"]["triggered"],
+            model=model.get("model"),
+            model_ms=model.get("ms"),
+            model_error=model.get("error"),
+            intents=model.get("intents"),
+            usage=model.get("usage"),
+            failed_checks=[
+                e["payload"]["check"] for e in events if e["type"] == "check" and not e["payload"]["passed"]
+            ],
+            requests_saved=[r.id for r in self._new_requests],
+        )
 
     def _agent_turn(self, call: CallState, text: str, events: list[Event], parts: list[str]):
         returned: dict[str, str] = {}
@@ -128,6 +170,7 @@ class Engine:
                     "ms": round((time.perf_counter() - started) * 1000),
                     "intents": list(interp.intents),
                     "error": interp.error,
+                    "usage": interp.usage,
                 },
             }
         )
@@ -164,6 +207,7 @@ class Engine:
         if "goodbye" in intents or ("deny" in intents and call.stage in ("open", "answer", "close")):
             parts.append(script("close_goodbye"))
             call.ended = True
+            call.outcome = call.outcome or "info_only"
             self._move(call, "close", events)
             return
 
@@ -172,6 +216,8 @@ class Engine:
         if "human" in intents:
             events.append({"type": "handoff", "payload": {"reason": "caller_asked"}})
             call.request_type = call.request_type or "callback"
+            if call.outcome != "emergency":
+                call.outcome = "handoff"
             self._move(call, "collect", events)
             parts += [p for p in (answer, script("handoff_human")) if p]
             return
@@ -276,6 +322,8 @@ class Engine:
     def _save(self, call: CallState, events: list[Event]) -> str:
         record = RequestRecord(call_id=call.id, type=call.request_type, **call.fields)
         self.requests[record.id] = record
+        self._new_requests.append(record)
+        call.outcome = call.outcome or "request_saved"
         events.append(
             {
                 "type": "tool_call",

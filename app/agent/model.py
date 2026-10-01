@@ -63,6 +63,8 @@ class Interpretation(BaseModel):
     cited_ids: list[str] = Field(default_factory=list, description="KB entry IDs the draft uses.")
     # Set by an adapter when the model call failed; the engine logs it and carries on safely.
     error: str | None = Field(default=None, exclude=True)
+    # Token counts for the turn, summed over the adapter's requests (for cost tracking).
+    usage: dict[str, int] | None = Field(default=None, exclude=True)
 
 
 @dataclass

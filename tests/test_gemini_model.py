@@ -11,9 +11,14 @@ def call(name, **args):
     return SimpleNamespace(name=name, args=args)
 
 
-def response(*calls):
+def response(*calls, prompt=100, output=10, thinking=5):
     return SimpleNamespace(
-        function_calls=list(calls), candidates=[SimpleNamespace(content=f"model-turn:{calls[0].name}")]
+        function_calls=list(calls),
+        candidates=[SimpleNamespace(content=f"model-turn:{calls[0].name}")],
+        usage_metadata=SimpleNamespace(
+            prompt_token_count=prompt, candidates_token_count=output,
+            thoughts_token_count=thinking, cached_content_token_count=0,
+        ),
     )
 
 
@@ -59,6 +64,20 @@ def test_search_then_submit_returns_the_interpretation():
     assert result.error is None
     # The model's own turn is passed back unchanged (Gemini needs its signatures).
     assert "model-turn:search_kb" in client.requests[1]["contents"]
+
+
+def test_token_usage_is_summed_across_the_turns_requests():
+    client = FakeGenaiClient(
+        [
+            response(call("search_kb", query="hours"), prompt=800, output=20, thinking=40),
+            response(submit(), prompt=900, output=50, thinking=0),
+        ]
+    )
+    result = GeminiModel("gemini-test", client=client).interpret(CTX, lambda q: [])
+    assert result.usage == {
+        "requests": 2, "input_tokens": 1700, "cached_tokens": 0,
+        "output_tokens": 70, "thinking_tokens": 40,
+    }
 
 
 def test_fields_are_parsed():

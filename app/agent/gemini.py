@@ -93,6 +93,13 @@ class GeminiModel:
         )
 
     def interpret(self, ctx: TurnContext, search: SearchFn) -> Interpretation:
+        usage = {"requests": 0, "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0,
+                 "thinking_tokens": 0}
+        result = self._interpret(ctx, search, usage)
+        result.usage = usage
+        return result
+
+    def _interpret(self, ctx: TurnContext, search: SearchFn, usage: dict[str, int]) -> Interpretation:
         contents = [types.Content(role="user", parts=[types.Part(text=turn_prompt(ctx))])]
         searches = 0
         try:
@@ -101,6 +108,7 @@ class GeminiModel:
                 resp = self.client.models.generate_content(
                     model=self.name, contents=contents, config=self._config(allowed)
                 )
+                _add_usage(usage, resp)
                 calls = resp.function_calls or []
                 submitted = next((c for c in calls if c.name == "submit"), None)
                 if submitted is not None:
@@ -124,3 +132,15 @@ class GeminiModel:
             return Interpretation(intents=["other"], error=f"invalid submit: {e.errors()[0]['msg']}")
         except Exception as e:  # network, quota, server errors: degrade safely, never crash a call
             return Interpretation(intents=["other"], error=f"{type(e).__name__}: {e}")
+
+
+def _add_usage(usage: dict[str, int], resp) -> None:
+    """Add one response's token counts. Thinking tokens are billed as output."""
+    meta = getattr(resp, "usage_metadata", None)
+    usage["requests"] += 1
+    if meta is None:
+        return
+    usage["input_tokens"] += meta.prompt_token_count or 0
+    usage["cached_tokens"] += meta.cached_content_token_count or 0
+    usage["output_tokens"] += meta.candidates_token_count or 0
+    usage["thinking_tokens"] += meta.thoughts_token_count or 0

@@ -1,15 +1,19 @@
 """Run a scripted caller through the engine with the real agent model and print the transcript.
 
 Uses AGENT_MODEL (e.g. gemini-3.8-flash) and Google Application Default Credentials.
-This calls the model API and costs a little money per run.
+This calls the model API and costs a little money per run. With DATABASE_URL set, the
+call is stored with source "simulator".
 
     AGENT_MODEL=gemini-3.8-flash GOOGLE_CLOUD_PROJECT=ai-rceptionist python -m sim.live_call
 """
 
 import sys
 
+from dotenv import load_dotenv
+
 from app.agent.engine import Engine
 from app.agent.model import model_from_env
+from app.db.store import store_from_env
 
 NEW_PATIENT_ALIGNERS = [
     "Hi, do you guys do Invisalign?",
@@ -25,7 +29,8 @@ NEW_PATIENT_ALIGNERS = [
 
 
 def main(lines: list[str]) -> None:
-    engine = Engine(model_from_env())
+    load_dotenv()
+    engine = Engine(model_from_env(), store=store_from_env(), source="simulator")
     call_id = ""
     for text in lines:
         result = engine.handle(call_id, text)
@@ -44,10 +49,14 @@ def main(lines: list[str]) -> None:
             meta += f" cited={cited}"
         if failed:
             meta += f" failed_checks={failed}"
+        storage = [e["payload"]["error"] for e in result.events if e["type"] == "storage"]
+        if storage:
+            meta += f" STORAGE_ERROR={storage}"
         print(meta + "]")
         if result.ended:
             break
-    print("\nSaved requests:")
+    print(f"\nCall ID: {call_id}")
+    print("Saved requests:")
     for r in engine.requests.values():
         print(" ", r.model_dump(exclude={"created_at"}))
 

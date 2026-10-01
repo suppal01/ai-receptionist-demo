@@ -19,6 +19,23 @@ def events_of(body, event_type):
     return [e for e in body["events"] if e["type"] == event_type]
 
 
+def test_store_is_postgres_when_database_url_is_set(monkeypatch):
+    from app.db import store as store_module
+
+    created = []
+    monkeypatch.setattr(store_module, "PostgresStore", lambda url: created.append(url) or "pg")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://example")
+    assert store_module.store_from_env() == "pg"
+    assert created == ["postgresql://example"]
+
+
+def test_store_is_memory_without_database_url(monkeypatch):
+    from app.db.store import MemoryStore, store_from_env
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert isinstance(store_from_env(), MemoryStore)
+
+
 def test_health():
     resp = client.get("/health")
     assert resp.status_code == 200
