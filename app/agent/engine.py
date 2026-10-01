@@ -211,7 +211,11 @@ class Engine:
             self._move(call, "close", events)
             return
 
+        before = dict(call.fields)
         changed, invalid_phone = self._merge(call, interp, events)
+        # Contact details mean the caller wants something followed up. Insurance, times or a
+        # reason mentioned inside a question are remembered but don't start a request.
+        gave_contact = any(call.fields.get(f) != before.get(f) for f in ("name", "callback_number"))
 
         if "human" in intents:
             events.append({"type": "handoff", "payload": {"reason": "caller_asked"}})
@@ -222,7 +226,7 @@ class Engine:
             parts += [p for p in (answer, script("handoff_human")) if p]
             return
 
-        if call.stage not in ("collect", "confirm") and ("request" in intents or changed):
+        if call.stage not in ("collect", "confirm") and ("request" in intents or gave_contact or invalid_phone):
             call.request_type = call.request_type or "new_patient"
             self._move(call, "collect", events)
 

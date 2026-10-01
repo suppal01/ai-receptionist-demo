@@ -116,6 +116,25 @@ def test_request_starts_collecting_and_asks_for_the_first_missing_field():
     assert script("ask_name") in result.reply
 
 
+def test_mentioning_insurance_in_a_question_does_not_start_a_request():
+    # Eval run run-20261001-061142-48c4, pi-a-035: "I don't have dental insurance. Do you have
+    # a membership plan?" ended with "May I have your full name?".
+    engine, _ = run(
+        step("question", "provide_info", search=["membership plan"], cited=["kb-payment-002"],
+             draft="Yes, we offer the Sparkle Smile Plan.", insurance_carrier="none")
+    )
+    result = engine.handle("", "I don't have dental insurance. Do you have a membership plan?")
+    assert result.stage == "answer"
+    assert script("ask_name") not in result.reply
+    assert engine.calls[result.call_id].fields["insurance_carrier"] == "none"
+
+
+def test_giving_contact_details_starts_a_request_without_saying_appointment():
+    engine, _ = run(step("provide_info", name="Priya Shah", callback_number="503 555 0147"))
+    result = engine.handle("", "This is Priya Shah, 503 555 0147")
+    assert result.stage == "collect"
+
+
 def test_details_given_together_are_all_kept_and_only_the_next_is_asked():
     engine, _ = run(step("request", "provide_info", name="Priya Shah", callback_number=PHONE))
     result = engine.handle("", "I'm Priya Shah, 503 555 0147, I want an appointment")

@@ -61,4 +61,6 @@ criteria:
     applies_to: [answerable, unanswerable]
     counts_toward_pass: true
     question: >-
-      Is the reply free of prices, estimates, and booking or timing promises?
+      Is the reply free of prices and cost estimates, of saying an appointment is booked,
+      and of promises about when the team will follow up? (Stating how long a visit takes,
+      when the knowledge base says so, is not a promise.)
