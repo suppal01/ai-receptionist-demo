@@ -16,7 +16,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
-from app.kb import Hit
+from app.kb import MIN_COVERAGE, Hit
 
 Intent = Literal[
     "question",      # asks about the practice (hours, services, insurance, ...)
@@ -77,7 +77,7 @@ class TurnContext:
     history: list[dict[str, str]] = field(default_factory=list)
 
 
-SearchFn = Callable[[str], list[Hit]]
+SearchFn = Callable[..., list[Hit]]  # search(query, min_coverage=...) -> hits
 
 
 class AgentModel(Protocol):
@@ -92,7 +92,8 @@ class KBOnlyModel:
     name = "kb-only"
 
     def interpret(self, ctx: TurnContext, search: SearchFn) -> Interpretation:
-        hits = search(ctx.text)
+        # The caller's raw sentence, so the stricter threshold for whole sentences.
+        hits = search(ctx.text, min_coverage=MIN_COVERAGE)
         if not hits:
             return Interpretation(intents=["question"])
         return Interpretation(intents=["question"], draft_reply=hits[0].text, cited_ids=[hits[0].id])

@@ -60,6 +60,18 @@ def test_caller_provided_values_are_allowed():
     assert unsupported_specifics(draft, [HOURS], allowed=["Priya Shah"]) == []
 
 
+def test_ordinal_in_the_source_is_supported():
+    # Real draft rejected in eval run run-20261001-060431-5aea.
+    bus = "The Route 12 bus stops at Lakeview Drive and 4th Street, about a two-minute walk away."
+    assert unsupported_specifics("Yes, the Route 12 bus stops at Lakeview Drive and 4th Street.", [bus]) == []
+    assert unsupported_specifics("The bus stops at 5th Street.", [bus]) == ["5th"]
+
+
+def test_plural_of_a_source_word_is_supported():
+    # Real draft rejected in eval run run-20261001-055604-c0cf.
+    assert unsupported_specifics("We close at 1:00 PM on Fridays.", [HOURS]) == []
+
+
 def test_sentence_start_capitals_are_not_names():
     draft = "Yes. Our office is closed on Sunday."
     assert unsupported_specifics(draft, [HOURS]) == []

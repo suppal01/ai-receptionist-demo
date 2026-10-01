@@ -88,11 +88,15 @@ def _index() -> tuple[list[set[str]], dict[str, float]]:
 
 
 # A hit must cover at least this share of the query's weight, so one shared common word
-# ("last" in "last night" vs "your last dental visit") is not enough.
+# ("last" in "last night" vs "your last dental visit") is not enough. That suits raw caller
+# sentences (the KB-only model). The agent model searches with keyword lists instead
+# ("dentists providers staff team"), where 0.5 found nothing; 0.2 finds them and still
+# returns nothing for off-topic keywords (measured on practice_info_v1, 2026-10-01).
 MIN_COVERAGE = 0.5
+KEYWORD_QUERY_MIN_COVERAGE = 0.2
 
 
-def search(query: str, limit: int = 3) -> list[Hit]:
+def search(query: str, limit: int = 3, min_coverage: float = MIN_COVERAGE) -> list[Hit]:
     """Return up to `limit` entries that match the query, best first.
 
     An empty list means the knowledge base has nothing on the question.
@@ -105,7 +109,7 @@ def search(query: str, limit: int = 3) -> list[Hit]:
     scored = []
     for entry, doc in zip(entries(), docs):
         score = sum(idf[t] for t in terms & doc)
-        if total and score / total >= MIN_COVERAGE:
+        if score > 0 and score / total >= min_coverage:
             scored.append((score, entry))
     scored.sort(key=lambda pair: pair[0], reverse=True)
     return [Hit(e.id, e.category, e.text, round(s, 3)) for s, e in scored[:limit]]

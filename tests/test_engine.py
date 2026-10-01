@@ -45,6 +45,15 @@ def test_grounded_answer_is_sent_with_citation():
     assert search["payload"]["cited"] == ["kb-hours-001"]
 
 
+def test_model_searches_use_the_keyword_query_threshold():
+    engine, _ = run(
+        step("question", search=["dentists providers staff team"], cited=["kb-team-001"],
+             draft="Our dentists are Dr. Maya Okafor and Dr. Daniel Reyes.")
+    )
+    result = engine.handle("", "Who are the dentists?")
+    assert "Dr. Maya Okafor" in result.reply
+
+
 def test_answer_without_a_search_is_replaced_by_decline():
     engine, _ = run(step("question", draft=HOURS_DRAFT, cited=["kb-hours-001"]))
     result = engine.handle("", "When are you open Friday?")

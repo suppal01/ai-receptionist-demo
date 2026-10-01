@@ -65,7 +65,15 @@ class GeminiModel:
                 vertexai=True,
                 project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
                 location=os.environ.get("GOOGLE_CLOUD_LOCATION", "global"),
-                http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
+                http_options=types.HttpOptions(
+                    timeout=REQUEST_TIMEOUT_MS,
+                    # One quick retry on rate limits and Google-side errors; a 504 failed
+                    # one case in eval run run-20261001-055604-c0cf.
+                    retry_options=types.HttpRetryOptions(
+                        attempts=2, initial_delay=0.5, max_delay=1.0,
+                        http_status_codes=[429, 500, 502, 503, 504],
+                    ),
+                ),
             )
         return self._client
 

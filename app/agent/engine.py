@@ -150,8 +150,8 @@ class Engine:
         returned: dict[str, str] = {}
         searches: list[dict[str, Any]] = []
 
-        def search_kb(query: str) -> list[kb.Hit]:
-            hits = kb.search(query)
+        def search_kb(query: str, min_coverage: float = kb.KEYWORD_QUERY_MIN_COVERAGE) -> list[kb.Hit]:
+            hits = kb.search(query, min_coverage=min_coverage)
             searches.append({"query": query, "hits": hits})
             returned.update({h.id: h.text for h in hits})
             return hits

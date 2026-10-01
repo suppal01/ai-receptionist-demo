@@ -49,7 +49,8 @@ def unsupported_specifics(
     text = _TITLES.sub(r"\1", draft.replace("’", "'"))
     found: list[str] = []
 
-    for number in re.findall(r"\d+(?::\d+)?", text):
+    # Times ("8:00") and ordinals ("4th") are single tokens.
+    for number in re.findall(r"\d+(?::\d+|st|nd|rd|th)?", text):
         if not _present(number, source):
             found.append(number)
 
@@ -59,7 +60,8 @@ def unsupported_specifics(
             if not word[0].isupper() or word in _NOT_NAMES:
                 continue
             bare = word.removesuffix("'s")
-            if not (_present(word, source) or _present(bare, source)):
+            singular = bare.removesuffix("s")  # "Fridays" is supported by "Friday"
+            if not any(_present(w, source) for w in (word, bare, singular)):
                 found.append(bare)
 
     return list(dict.fromkeys(found))
