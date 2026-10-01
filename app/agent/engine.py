@@ -11,6 +11,7 @@ Every turn:
 The model never picks the stage, saves a request, or hands off. Code does.
 """
 
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -25,6 +26,7 @@ from app.agent.checks import (
     unsupported_specifics,
 )
 from app.agent.model import FIELD_ORDER, AgentModel, Interpretation, TurnContext
+from app.agent.prompts import PROMPT_VERSION
 from app.agent.request_store import REQUIRED_FIELDS, RequestRecord
 from app.agent.scripts import script
 
@@ -115,7 +117,20 @@ class Engine:
         ctx = TurnContext(
             text=text, stage=call.stage, missing_fields=self._missing(call), history=list(call.history)
         )
+        started = time.perf_counter()
         interp = self.model.interpret(ctx, search_kb)
+        events.append(
+            {
+                "type": "model",
+                "payload": {
+                    "model": self.model.name,
+                    "prompt_version": PROMPT_VERSION,
+                    "ms": round((time.perf_counter() - started) * 1000),
+                    "intents": list(interp.intents),
+                    "error": interp.error,
+                },
+            }
+        )
         intents = set(interp.intents)
         if asks_about_price(text) and "price" not in intents:
             intents.add("price")

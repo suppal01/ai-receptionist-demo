@@ -240,6 +240,35 @@ def test_model_sees_stage_and_missing_fields():
     assert ctx.history[0] == {"role": "caller", "text": "I want an appointment"}
 
 
+def test_every_model_turn_is_logged_with_its_name_and_time():
+    engine, _ = run(step("request"))
+    result = engine.handle("", "I want an appointment")
+    [model_event] = of_type(result, "model")
+    assert model_event["payload"]["model"] == "fake"
+    assert model_event["payload"]["ms"] >= 0
+    assert model_event["payload"]["prompt_version"]
+
+
+def test_model_failure_is_logged_and_the_caller_gets_a_safe_reply():
+    from app.agent.model import Interpretation
+
+    engine, _ = run(([], Interpretation(intents=["other"], error="503 unavailable")))
+    result = engine.handle("", "When are you open?")
+    [model_event] = of_type(result, "model")
+    assert model_event["payload"]["error"] == "503 unavailable"
+    assert script("ask_how_help") in result.reply
+
+
+def test_gemini_is_selected_by_agent_model(monkeypatch):
+    from app.agent.gemini import GeminiModel
+    from app.agent.model import model_from_env
+
+    monkeypatch.setenv("AGENT_MODEL", "gemini-3.8-flash")
+    model = model_from_env()
+    assert isinstance(model, GeminiModel)
+    assert model.name == "gemini-3.8-flash"
+
+
 # --- The walkthrough call, end to end ----------------------------------------------------
 
 

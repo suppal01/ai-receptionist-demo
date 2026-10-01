@@ -61,6 +61,8 @@ class Interpretation(BaseModel):
         description="Answer to the caller's question using only search_kb results. Empty if no question.",
     )
     cited_ids: list[str] = Field(default_factory=list, description="KB entry IDs the draft uses.")
+    # Set by an adapter when the model call failed; the engine logs it and carries on safely.
+    error: str | None = Field(default=None, exclude=True)
 
 
 @dataclass
@@ -99,4 +101,8 @@ def model_from_env() -> AgentModel:
     name = os.environ.get("AGENT_MODEL", "").strip()
     if not name:
         return KBOnlyModel()
+    if name.startswith("gemini"):
+        from app.agent.gemini import GeminiModel
+
+        return GeminiModel(name)
     raise ValueError(f"AGENT_MODEL={name!r} is not supported yet")
