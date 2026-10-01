@@ -43,8 +43,8 @@ close_request_saved: >-
 close_goodbye: >-
   Thank you for calling Sparkle Dental. Have a good day.
 
-# Next-step prompts chosen by code while collecting a request (added 2026-09-30; not yet
-# approved by the product owner).
+# Next-step prompts chosen by code while collecting a request (added and approved by the
+# product owner on 2026-09-30).
 ask_name: >-
   I can take a request for our team. May I have your full name?
 
