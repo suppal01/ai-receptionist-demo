@@ -88,6 +88,19 @@ def test_insurance_question_is_not_a_price_question():
     assert not asks_about_price("Do you take Delta Dental?")
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["How much notice do you need if I have to cancel?", "How much time should I plan for?"],
+)
+def test_how_much_about_time_or_notice_is_not_a_price_question(text):
+    assert not asks_about_price(text)
+
+
+@pytest.mark.parametrize("text", ["How much for whitening?", "how much would that be", "How much do you charge?"])
+def test_how_much_about_money_is_still_a_price_question(text):
+    assert asks_about_price(text)
+
+
 def test_banned_phrase_is_found_but_required_close_wording_is_not():
     assert find_banned("Great, you're booked for Monday.") == ["you're booked"]
     assert find_banned("This is a request, not a booked appointment.") == []

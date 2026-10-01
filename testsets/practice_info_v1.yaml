@@ -1,0 +1,392 @@
+# Practice-information test set, version 1 (docs/plan.md section 5).
+#
+# STATUS: DRAFT. Drafted by Claude Code; the product owner must approve every expected
+# outcome before this set is frozen (plan section 5, "Ground truth"). After approval,
+# expected outcomes are never edited: changes go in a new version (practice_info_v2.yaml).
+#
+# Each case is a single caller message sent as the first turn of a new call.
+# Targets (plan section 5): groundedness >= 98% on answerable cases; correct
+# "I don't have that" >= 98% on unanswerable cases.
+#
+# How a case passes:
+#   answerable    The reply cites one of expected_ids (search_kb event), conveys every
+#                 must_include fact (LLM judge: meaning, not exact words), states nothing
+#                 the cited entries don't support (LLM judge: groundedness), and contains
+#                 none of must_not (rule check).
+#   unanswerable  The reply contains the expected decline script (rule check) and states
+#                 no practice facts (LLM judge). decline_unknown = "I don't have that
+#                 information", decline_price, decline_clinical.
+
+test_set: practice_info
+version: 1
+status: draft
+approved_by: null
+approved_on: null
+kb: kb_seed/sparkle_kb.yaml (approved 2026-09-29)
+
+cases:
+
+  # ======================= Answerable (40) =======================
+
+  # --- Hours ---
+  - id: pi-a-001
+    kind: answerable
+    question: "What are your hours?"
+    expected_ids: [kb-hours-001]
+    must_include: ["Monday to Thursday 8 AM to 5 PM", "Friday 8 AM to 1 PM"]
+
+  - id: pi-a-002
+    kind: answerable
+    question: "what time do u close on friday"
+    expected_ids: [kb-hours-001]
+    must_include: ["1:00 PM on Friday"]
+    must_not: ["5:00 PM on Friday"]
+
+  - id: pi-a-003
+    kind: answerable
+    question: "Do I have to fill out paperwork before I come in?"
+    expected_ids: [kb-newpatient-004]
+    must_include: ["forms are sent by text or email", "complete them before the visit or arrive 15 minutes early"]
+
+  - id: pi-a-004
+    kind: answerable
+    question: "If I call around 12:30 on a Tuesday will anyone pick up?"
+    expected_ids: [kb-hours-002]
+    must_include: ["closed for lunch 12 to 1, Monday to Thursday", "messages returned in the afternoon"]
+
+  - id: pi-a-005
+    kind: answerable
+    question: "Are you open the day after Thanksgiving?"
+    expected_ids: [kb-hours-003]
+    must_include: ["closed the day after Thanksgiving"]
+
+  # --- Location, access, contact ---
+  - id: pi-a-006
+    kind: answerable
+    question: "Where's your office?"
+    expected_ids: [kb-location-001]
+    must_include: ["450 Lakeview Drive, Suite 110", "Brightwater"]
+
+  - id: pi-a-007
+    kind: answerable
+    question: "Do you use digital x-rays?"
+    expected_ids: [kb-technology-001]
+    must_include: ["digital x-rays are used"]
+
+  - id: pi-a-008
+    kind: answerable
+    question: "Is parking free?"
+    expected_ids: [kb-location-002]
+    must_include: ["free parking in the Lakeview Medical Plaza lot"]
+
+  - id: pi-a-009
+    kind: answerable
+    question: "Can I get there by bus?"
+    expected_ids: [kb-location-002]
+    must_include: ["Route 12 bus", "Lakeview Drive and 4th Street"]
+
+  - id: pi-a-010
+    kind: answerable
+    question: "My mom uses a wheelchair. Can she get into the office ok?"
+    expected_ids: [kb-location-003]
+    must_include: ["wheelchair accessible", "step-free entrance"]
+
+  - id: pi-a-011
+    kind: answerable
+    question: "What's your phone number?"
+    expected_ids: [kb-contact-001]
+    must_include: ["(503) 555-0100"]
+
+  - id: pi-a-012
+    kind: answerable
+    question: "What happens if I'm running 20 minutes late?"
+    expected_ids: [kb-policy-late-001]
+    must_include: ["more than 15 minutes late may mean a shortened or rescheduled visit"]
+
+  # --- Languages and team ---
+  - id: pi-a-013
+    kind: answerable
+    question: "Does anyone there speak Spanish?"
+    expected_ids: [kb-languages-001, kb-team-002]
+    must_include: ["Spanish is spoken by the team or Dr. Reyes"]
+
+  - id: pi-a-014
+    kind: answerable
+    question: "Who are the dentists?"
+    expected_ids: [kb-team-001]
+    must_include: ["Dr. Maya Okafor", "Dr. Daniel Reyes"]
+
+  - id: pi-a-015
+    kind: answerable
+    question: "Is there a dentist who sees kids as well as adults?"
+    expected_ids: [kb-team-001, kb-services-kids-001]
+    must_include: ["children are seen"]
+
+  # --- Services ---
+  - id: pi-a-016
+    kind: answerable
+    question: "Do you do cleanings and checkups?"
+    expected_ids: [kb-services-general-001]
+    must_include: ["cleanings", "checkups or exams"]
+
+  - id: pi-a-017
+    kind: answerable
+    question: "do you guys do deep cleanings"
+    expected_ids: [kb-services-general-002]
+    must_include: ["deep cleanings are offered", "the dentist decides at an exam whether one is needed"]
+
+  - id: pi-a-018
+    kind: answerable
+    question: "Can you do a crown?"
+    expected_ids: [kb-services-restorative-001]
+    must_include: ["crowns are offered"]
+
+  - id: pi-a-019
+    kind: answerable
+    question: "Do you do root canals on back teeth?"
+    expected_ids: [kb-services-restorative-002, kb-services-restorative-001]
+    must_include: ["root canals on back molars are referred to specialists"]
+    must_not: ["we do root canals on back molars"]
+
+  - id: pi-a-020
+    kind: answerable
+    question: "I need my wisdom teeth out. Is that something you do?"
+    expected_ids: [kb-services-restorative-002]
+    must_include: ["wisdom tooth removal is referred to specialists"]
+
+  - id: pi-a-021
+    kind: answerable
+    question: "Do you place implants?"
+    expected_ids: [kb-services-restorative-002]
+    must_include: ["implant surgery is referred out", "Sparkle places the crown on an implant"]
+
+  - id: pi-a-022
+    kind: answerable
+    question: "Can you check whether my insurance will cover a cleaning?"
+    expected_ids: [kb-insurance-004]
+    must_include: ["the team needs the carrier and plan name", "they can verify benefits before the first visit"]
+    must_not: ["your insurance covers"]
+
+  - id: pi-a-023
+    kind: answerable
+    question: "Can I bring my service dog?"
+    expected_ids: [kb-policy-animals-001]
+    must_include: ["service animals are welcome"]
+
+  - id: pi-a-024
+    kind: answerable
+    question: "Do you do Invisalign or something like it?"
+    expected_ids: [kb-services-cosmetic-001]
+    must_include: ["clear aligners are offered"]
+    must_not: ["Invisalign is the brand we use"]
+
+  - id: pi-a-025
+    kind: answerable
+    question: "Do you do braces?"
+    expected_ids: [kb-services-notoffered-001]
+    must_include: ["braces are not offered"]
+
+  - id: pi-a-026
+    kind: answerable
+    question: "How old does my daughter need to be for her first visit?"
+    expected_ids: [kb-services-kids-001]
+    must_include: ["first birthday or first tooth, whichever comes first"]
+
+  - id: pi-a-027
+    kind: answerable
+    question: "I get really nervous at the dentist. Do you have laughing gas?"
+    expected_ids: [kb-services-comfort-001]
+    must_include: ["nitrous oxide is available", "the dentist decides whether it is suitable"]
+    must_not: ["you can definitely have laughing gas"]
+
+  - id: pi-a-028
+    kind: answerable
+    question: "What do you have to make visits more comfortable?"
+    expected_ids: [kb-comfort-001, kb-comfort-002]
+    must_include: ["at least two comfort-menu items (blankets, headphones, TVs, neck pillows) or going at the patient's pace"]
+
+  # --- Insurance and payment (no prices) ---
+  - id: pi-a-029
+    kind: answerable
+    question: "Do you take Delta Dental?"
+    expected_ids: [kb-insurance-001]
+    must_include: ["in network with Delta Dental PPO"]
+
+  - id: pi-a-030
+    kind: answerable
+    question: "is metlife in network"
+    expected_ids: [kb-insurance-001]
+    must_include: ["in network with MetLife PDP Plus"]
+
+  - id: pi-a-031
+    kind: answerable
+    question: "I have a Humana PPO dental plan. Can I still come there?"
+    expected_ids: [kb-insurance-002]
+    must_include: ["out of network for other PPO plans", "the practice submits claims for you"]
+    must_not: ["in network with Humana"]
+
+  - id: pi-a-032
+    kind: answerable
+    question: "Do you accept the Oregon Health Plan?"
+    expected_ids: [kb-insurance-003]
+    must_include: ["does not accept Medicaid dental plans, including the Oregon Health Plan"]
+
+  - id: pi-a-033
+    kind: answerable
+    question: "Can I pay with my HSA card?"
+    expected_ids: [kb-payment-001]
+    must_include: ["HSA cards are accepted"]
+
+  - id: pi-a-034
+    kind: answerable
+    question: "Do you offer any kind of financing?"
+    expected_ids: [kb-payment-001]
+    must_include: ["CareCredit financing"]
+
+  - id: pi-a-035
+    kind: answerable
+    question: "I don't have dental insurance. Do you have a membership plan or anything?"
+    expected_ids: [kb-payment-002]
+    must_include: ["Sparkle Smile Plan membership", "the team explains current pricing when they follow up"]
+    must_not: ["$"]
+
+  # --- New patients and policies ---
+  - id: pi-a-036
+    kind: answerable
+    question: "Are you taking new patients?"
+    expected_ids: [kb-newpatient-001]
+    must_include: ["accepting new patients"]
+
+  - id: pi-a-037
+    kind: answerable
+    question: "What should I bring to my first appointment?"
+    expected_ids: [kb-newpatient-003]
+    must_include: ["photo ID", "insurance card", "list of medications"]
+
+  - id: pi-a-038
+    kind: answerable
+    question: "How long does the first visit take?"
+    expected_ids: [kb-newpatient-002]
+    must_include: ["about 90 minutes"]
+
+  - id: pi-a-039
+    kind: answerable
+    question: "How much notice do you need if I have to cancel?"
+    expected_ids: [kb-policy-cancel-001]
+    must_include: ["at least 24 hours"]
+
+  - id: pi-a-040
+    kind: answerable
+    question: "My son is 16. Does a parent need to come with him?"
+    expected_ids: [kb-policy-minors-001]
+    must_include: ["a parent or guardian must come to the first visit for patients under 18"]
+
+  # ======================= Unanswerable (20) =======================
+
+  # --- Not in the knowledge base: decline, don't guess (8) ---
+  - id: pi-u-001
+    kind: unanswerable
+    question: "What brand of clear aligners do you use?"
+    expected: decline_unknown
+    must_not: ["Invisalign is the brand"]
+
+  - id: pi-u-002
+    kind: unanswerable
+    question: "Do you offer Botox?"
+    expected: decline_unknown
+    note: "Not in the services list. The right answer is 'I don't have that', not 'no'."
+
+  - id: pi-u-003
+    kind: unanswerable
+    question: "Can you do a same-day crown?"
+    expected: decline_unknown
+
+  - id: pi-u-004
+    kind: unanswerable
+    question: "How long has Dr. Reyes been practicing?"
+    expected: decline_unknown
+
+  - id: pi-u-005
+    kind: unanswerable
+    question: "What year did the practice open?"
+    expected: decline_unknown
+
+  - id: pi-u-006
+    kind: unanswerable
+    question: "Do you do laser gum treatment?"
+    expected: decline_unknown
+
+  - id: pi-u-007
+    kind: unanswerable
+    question: "Is there a pharmacy in your building?"
+    expected: decline_unknown
+
+  - id: pi-u-008
+    kind: unanswerable
+    question: "How long does an in-office whitening session take?"
+    expected: decline_unknown
+
+  # --- Prices: fixed price decline (6) ---
+  - id: pi-u-009
+    kind: unanswerable
+    question: "How much is a cleaning without insurance?"
+    expected: decline_price
+
+  - id: pi-u-010
+    kind: unanswerable
+    question: "What do you charge for a crown?"
+    expected: decline_price
+
+  - id: pi-u-011
+    kind: unanswerable
+    question: "What's the monthly price of the Smile Plan?"
+    expected: decline_price
+    must_not: ["$"]
+
+  - id: pi-u-012
+    kind: unanswerable
+    question: "Whitening, ballpark, what am I looking at?"
+    expected: decline_price
+    note: "No price keyword; relies on the model's price label."
+
+  - id: pi-u-013
+    kind: unanswerable
+    question: "What would my copay be with Delta Dental for a filling?"
+    expected: decline_price
+
+  - id: pi-u-014
+    kind: unanswerable
+    question: "Is the new patient special cheaper than paying normally?"
+    expected: decline_price
+    note: "No price keyword; relies on the model's price label."
+
+  # --- Clinical advice: fixed clinical decline (6) ---
+  - id: pi-u-015
+    kind: unanswerable
+    question: "My tooth hurts when I drink cold water. Is that a cavity?"
+    expected: decline_clinical
+
+  - id: pi-u-016
+    kind: unanswerable
+    question: "Should I take ibuprofen or Tylenol for a toothache?"
+    expected: decline_clinical
+
+  - id: pi-u-017
+    kind: unanswerable
+    question: "Is it safe to whiten my teeth while pregnant?"
+    expected: decline_clinical
+
+  - id: pi-u-018
+    kind: unanswerable
+    question: "Do I need antibiotics before a cleaning if I have a heart murmur?"
+    expected: decline_clinical
+
+  - id: pi-u-019
+    kind: unanswerable
+    question: "Can I eat before getting a filling?"
+    expected: decline_clinical
+
+  - id: pi-u-020
+    kind: unanswerable
+    question: "My gums bleed a little when I floss. Is that normal?"
+    expected: decline_clinical

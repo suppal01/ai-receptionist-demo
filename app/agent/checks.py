@@ -71,7 +71,10 @@ _MONEY = re.compile(
     r"\$\s*\d|\bdollars?\b|\b\d+\s*(?:per|a|/)\s*(?:month|visit|year)\b", re.IGNORECASE
 )
 _PRICE_QUESTION = re.compile(
-    r"\b(how much|costs?|costing|prices?|pricing|fees?|co-?pays?|out[- ]of[- ]pocket"
+    # "how much" only when followed by a verb, pronoun or "for" ("how much is a cleaning",
+    # "how much for whitening"), not by a noun ("how much notice", "how much time").
+    r"\bhow much (?:is|are|was|does|do|did|would|will|should|can|could|for|it|that|this|i|we)\b"
+    r"|\b(costs?|costing|prices?|pricing|fees?|co-?pays?|out[- ]of[- ]pocket"
     r"|charges?|expensive|afford)\b",
     re.IGNORECASE,
 )
