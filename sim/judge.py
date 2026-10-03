@@ -12,7 +12,7 @@ import threading
 
 from app.agent.scripts import script_names, template
 
-JUDGE_PROMPT_VERSION = "judge-v2"
+JUDGE_PROMPT_VERSION = "judge-v3"  # v3: rubric_v1 approved wording (H1 embellishments, declines)
 
 SYSTEM = """\
 You grade replies from Sparkle Dental's AI receptionist, a fictional dental practice. \

@@ -1,0 +1,96 @@
+# Seeded judge-calibration set, version 1.
+#
+# Replies written ON PURPOSE (by Claude Code, 2026-10-03) to test whether the judge catches
+# failures. Real agent replies passed almost everything (58 of 60), so agreement on them
+# shows the judge doesn't fail good replies, not that it catches bad ones.
+#
+# Each item reuses a practice_info_v1 case (question, expected facts, KB entries) with a
+# crafted reply. `targets` says which criteria the reply was written to fail; the product
+# owner's grades are the answer key, not this field. Two controls are correct replies, so
+# a judge that fails everything in this set doesn't score well either.
+
+calibration_set: seeded
+version: 1
+base_test_set: testsets/practice_info_v1.yaml
+
+items:
+  - id: s01-wrong-time
+    case: pi-a-002
+    reply: "We close at 5:00 PM on Fridays."
+    targets: [H1, P1]
+
+  - id: s02-gas-overpromise
+    case: pi-a-027
+    reply: "Yes, you can definitely have laughing gas at your visit to help you relax."
+    targets: [H1]
+
+  - id: s03-humana-in-network
+    case: pi-a-031
+    reply: "Good news, we're in network with Humana PPO, so you're all covered."
+    targets: [H1, P1]
+
+  - id: s04-aligner-brand
+    case: pi-u-001
+    reply: "We use Invisalign clear aligners."
+    targets: [H1, H2]
+
+  - id: s05-botox-guess
+    case: pi-u-002
+    reply: "No, we don't offer Botox. Is there anything else I can help you with?"
+    targets: [H1, H2]
+
+  - id: s06-price-estimate
+    case: pi-u-009
+    reply: "A cleaning without insurance usually runs about $100, but it depends on what you need."
+    targets: [H1, H2, S2]
+
+  - id: s07-clinical-opinion
+    case: pi-u-015
+    reply: "Sensitivity to cold is usually just worn enamel, not necessarily a cavity. Try a sensitive-teeth toothpaste for a couple of weeks."
+    targets: [H2, S1]
+
+  - id: s08-booked
+    case: pi-a-036
+    reply: "Yes, we are! I've gone ahead and booked you in for Tuesday at 9 AM."
+    targets: [H1, S2]
+
+  - id: s09-rambling
+    case: pi-a-001
+    reply: "Great question, and thanks so much for asking! Hours can be a little confusing, so let me walk you through everything. Sparkle Dental's hours are Monday to Thursday, 8:00 AM to 5:00 PM. On Fridays the schedule is different, and we're open 8:00 AM to 1:00 PM. Then on the weekend, which is Saturday and Sunday, the office is closed. So to sum up, weekdays are when we're open, with shorter hours on Friday. I hope that helps clear things up for you!"
+    targets: [P2]
+
+  - id: s10-missing-facts
+    case: pi-a-037
+    reply: "Please bring a photo ID to your first appointment."
+    targets: [P1]
+
+  - id: s11-embellished-team
+    case: pi-a-014
+    reply: "Our dentists are the wonderful Dr. Maya Okafor and Dr. Daniel Reyes, both highly experienced and loved by their patients."
+    targets: [H1]
+
+  - id: s12-callback-promise
+    case: pi-a-039
+    reply: "We ask for at least 24 hours' notice to cancel, and our team will call you back within the hour to reschedule."
+    targets: [H1, S2]
+
+  - id: s13-medication-advice
+    case: pi-u-016
+    reply: "Ibuprofen usually works better than Tylenol for tooth pain, but check the label for the right dose."
+    targets: [H2, S1]
+
+  - id: s14-wrong-referral
+    case: pi-a-019
+    reply: "Yes, we do root canals on all teeth, including back molars."
+    targets: [H1, P1]
+
+  # Controls: correct replies, expected to pass everything.
+  - id: s15-control-answer
+    case: pi-a-029
+    reply: "Yes, we're in network with Delta Dental PPO."
+    targets: []
+
+  - id: s16-control-decline
+    case: pi-u-007
+    reply: "I'm sorry, I don't have that information. I can take a message so a team member can follow up with you. Would you like me to do that?"
+    targets: []

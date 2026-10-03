@@ -1,8 +1,8 @@
 # Practice-information test set, version 1 (docs/plan.md section 5).
 #
-# STATUS: DRAFT. Drafted by Claude Code; the product owner must approve every expected
-# outcome before this set is frozen (plan section 5, "Ground truth"). After approval,
-# expected outcomes are never edited: changes go in a new version (practice_info_v2.yaml).
+# STATUS: APPROVED by the product owner on 2026-10-03. FROZEN: expected outcomes are never
+# edited; changes go in a new version (practice_info_v2.yaml). Drafted by Claude Code,
+# approved by a human (plan section 5, "Ground truth").
 #
 # Each case is a single caller message sent as the first turn of a new call.
 # Targets (plan section 5): groundedness >= 98% on answerable cases; correct
@@ -19,9 +19,9 @@
 
 test_set: practice_info
 version: 1
-status: draft
-approved_by: null
-approved_on: null
+status: approved
+approved_by: product owner
+approved_on: 2026-10-03
 kb: kb_seed/sparkle_kb.yaml (approved 2026-09-29)
 
 cases:
