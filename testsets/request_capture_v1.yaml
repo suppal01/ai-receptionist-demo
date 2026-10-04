@@ -1,0 +1,302 @@
+# Request-capture test set, version 1 (docs/plan.md section 5).
+#
+# STATUS: DRAFT. Drafted by Claude Code; the product owner must approve every expected
+# outcome before this set is frozen. After approval, changes go in request_capture_v2.yaml.
+#
+# Multi-turn cases. A caller simulator (an LLM, different from the agent) plays each caller
+# from `caller`: it opens with `opening`, knows only `facts`, and follows `behavior`. It
+# sends one short message per turn, like a person on the phone, and ends the call when its
+# goal is met or `max_turns` is reached.
+#
+# Targets (plan section 5): request complete and accurate >= 90%; callback number 100%.
+#
+# How a case passes:
+#   Rule checks:  a request was saved (or not, per expected); its type; callback_number and
+#                 name exactly as expected (after normalizing case and spaces); a read-back
+#                 of the number came before the save, and again after any correction; the
+#                 first reply has the AI disclosure; no reply says a request is booked or
+#                 promises follow-up timing; required events fired (e.g. handoff).
+#   LLM judge:    preferred_times, insurance_carrier and reason_for_visit match in meaning;
+#                 every agent reply passes rubric H1/S1/S2; the agent never asked again for a
+#                 detail the caller had already given (P1 for calls).
+# All names and numbers are fictional; phone numbers use the 555-01xx range.
+
+test_set: request_capture
+version: 1
+status: draft
+approved_by: null
+approved_on: null
+kb: kb_seed/sparkle_kb.yaml (approved 2026-09-29)
+
+cases:
+
+  - id: rc-001
+    title: Straightforward, one detail at a time
+    caller:
+      persona: Polite adult, answers exactly what is asked, nothing more.
+      opening: "Hi, I'd like to make an appointment. I'm a new patient."
+      facts: {name: "Jordan Rivera", phone: "503 555 0142", times: "weekday mornings",
+              insurance: "Delta Dental PPO", reason: "a cleaning"}
+      behavior: Give each detail only when asked. Confirm the read-back if it's right.
+    max_turns: 10
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Jordan Rivera", callback_number: "5035550142"}
+      semantic: {preferred_times: "weekday mornings", insurance_carrier: "Delta Dental PPO",
+                 reason_for_visit: "cleaning"}
+
+  - id: rc-002
+    title: Everything in the first message
+    caller:
+      persona: Busy professional who wants this done fast.
+      opening: "New patient here. Maria Chen, 971 555 0118, Tuesday or Thursday afternoons, I have MetLife PDP Plus, I need a checkup."
+      facts: {name: "Maria Chen", phone: "971 555 0118", times: "Tuesday or Thursday afternoons",
+              insurance: "MetLife PDP Plus", reason: "a checkup"}
+      behavior: Gets impatient if asked for something already given. Confirms the read-back.
+    max_turns: 6
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Maria Chen", callback_number: "9715550118"}
+      semantic: {preferred_times: "Tuesday or Thursday afternoons", insurance_carrier: "MetLife PDP Plus",
+                 reason_for_visit: "checkup"}
+      never_reasks: [name, callback_number, preferred_times, insurance_carrier, reason_for_visit]
+
+  - id: rc-003
+    title: Phone number given in two pieces
+    caller:
+      persona: Older caller, a little hesitant, reads the number off a card.
+      opening: "Hello, I'd like to come in for an appointment please."
+      facts: {name: "Harold Benson", phone: "503 555 0167", times: "Monday mornings",
+              insurance: "Cigna Dental PPO", reason: "a loose filling"}
+      behavior: >-
+        When asked for the phone number, say only "503 555..." and then, in your next
+        message, "oh sorry, 0167". Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Harold Benson", callback_number: "5035550167"}
+      semantic: {preferred_times: "Monday mornings", insurance_carrier: "Cigna Dental PPO",
+                 reason_for_visit: "loose filling"}
+
+  - id: rc-004
+    title: Corrects the phone number after the read-back
+    caller:
+      persona: Friendly adult who mixes up two digits.
+      opening: "Hi there, I'm looking to book a first visit."
+      facts: {name: "Priya Shah", phone_said_first: "503 555 0147", phone: "503 555 0174",
+              times: "weekday mornings", insurance: "Delta Dental PPO", reason: "clear aligners consultation"}
+      behavior: >-
+        Give phone_said_first as your number. When the number is read back, say the last
+        four digits are actually 0174. Confirm the second read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Priya Shah", callback_number: "5035550174"}
+      semantic: {preferred_times: "weekday mornings", insurance_carrier: "Delta Dental PPO",
+                 reason_for_visit: "clear aligners consultation"}
+      readback_after_correction: true
+
+  - id: rc-005
+    title: Corrects the name after the read-back
+    caller:
+      persona: Caller whose name is often misheard.
+      opening: "I need to set up a new patient appointment."
+      facts: {name_said_first: "Jordan Lee", name: "Jordyn Leigh", phone: "971 555 0123",
+              times: "Fridays", insurance: "Aetna Dental PPO", reason: "a cleaning"}
+      behavior: >-
+        Say your name as name_said_first. When the details are read back, correct it:
+        "It's Jordyn, J-O-R-D-Y-N, and Leigh, L-E-I-G-H." Confirm the second read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Jordyn Leigh", callback_number: "9715550123"}
+      semantic: {preferred_times: "Fridays", insurance_carrier: "Aetna Dental PPO", reason_for_visit: "cleaning"}
+      readback_after_correction: true
+
+  - id: rc-006
+    title: No dental insurance
+    caller:
+      persona: Young adult without coverage, a bit embarrassed about it.
+      opening: "Hi, I haven't been to a dentist in years and want to get started again."
+      facts: {name: "Sam Okoro", phone: "503 555 0109", times: "evenings or Fridays",
+              insurance: "none", reason: "a checkup and cleaning"}
+      behavior: When asked about insurance, say you don't have any. Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Sam Okoro", callback_number: "5035550109"}
+      semantic: {preferred_times: "evenings or Fridays", insurance_carrier: "none",
+                 reason_for_visit: "checkup and cleaning"}
+      note: "The read-back should say 'no insurance', not 'none'."
+
+  - id: rc-007
+    title: Side question in the middle
+    caller:
+      persona: Chatty caller who thinks of things as they go.
+      opening: "I'd like an appointment please, I'm new."
+      facts: {name: "Elena Vasquez", phone: "503 555 0131", times: "weekday mornings",
+              insurance: "Guardian DentalGuard Preferred", reason: "a cleaning"}
+      behavior: >-
+        After giving your phone number, ask "Oh, is there parking at the office?" before
+        answering the next question. Then carry on. Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Elena Vasquez", callback_number: "5035550131"}
+      semantic: {preferred_times: "weekday mornings", insurance_carrier: "Guardian DentalGuard Preferred",
+                 reason_for_visit: "cleaning"}
+      answers_side_question_from: [kb-location-002]
+
+  - id: rc-008
+    title: Asks for a price mid-request
+    caller:
+      persona: Cost-conscious caller.
+      opening: "Hi, I'd like to schedule a first visit."
+      facts: {name: "Tom Becker", phone: "971 555 0150", times: "Thursday afternoons",
+              insurance: "none", reason: "whitening consultation"}
+      behavior: >-
+        After saying you have no insurance, ask "How much does whitening cost?" Accept
+        the answer and carry on. Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Tom Becker", callback_number: "9715550150"}
+      semantic: {preferred_times: "Thursday afternoons", insurance_carrier: "none",
+                 reason_for_visit: "whitening consultation"}
+      uses_script: [decline_price]
+
+  - id: rc-009
+    title: Flexible on times
+    caller:
+      persona: Retired caller with an open schedule.
+      opening: "I'd like to become a patient there."
+      facts: {name: "Grace Liu", phone: "503 555 0175", times: "flexible, any weekday",
+              insurance: "United Concordia Dental PPO", reason: "a checkup"}
+      behavior: When asked about times, say "Oh, I'm flexible, any weekday works." Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Grace Liu", callback_number: "5035550175"}
+      semantic: {preferred_times: "any weekday / flexible", insurance_carrier: "United Concordia Dental PPO",
+                 reason_for_visit: "checkup"}
+
+  - id: rc-010
+    title: Phone number with a country code
+    caller:
+      persona: Caller who always gives numbers in international format.
+      opening: "Hello, new patient, I'd like an appointment for a cleaning."
+      facts: {name: "Ahmed Karimi", phone: "+1 503 555 0188", times: "Monday or Wednesday mornings",
+              insurance: "Delta Dental PPO", reason: "a cleaning"}
+      behavior: Give the phone as "+1 503 555 0188". Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Ahmed Karimi", callback_number: "5035550188"}
+      semantic: {preferred_times: "Monday or Wednesday mornings", insurance_carrier: "Delta Dental PPO",
+                 reason_for_visit: "cleaning"}
+
+  - id: rc-011
+    title: Leaves out the area code at first
+    caller:
+      persona: Local caller who assumes the area code.
+      opening: "Hi, I'd like to make a new patient appointment."
+      facts: {name: "Nora Quinn", phone_said_first: "555 0193", phone: "503 555 0193",
+              times: "Tuesday mornings", insurance: "Cigna Dental PPO", reason: "tooth sensitivity checkup"}
+      behavior: >-
+        Give phone_said_first when asked for your number. If asked again, give the full
+        number with area code. Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Nora Quinn", callback_number: "5035550193"}
+      semantic: {preferred_times: "Tuesday mornings", insurance_carrier: "Cigna Dental PPO",
+                 reason_for_visit: "tooth sensitivity checkup"}
+      uses_script: [invalid_callback]
+
+  - id: rc-012
+    title: Starts with a question, then decides to book
+    caller:
+      persona: Caller shopping around before committing.
+      opening: "Do you take Aetna Dental PPO?"
+      facts: {name: "Chris Mendoza", phone: "971 555 0136", times: "Friday mornings",
+              insurance: "Aetna Dental PPO", reason: "a cleaning"}
+      behavior: >-
+        After the insurance answer, say "Great, then I'd like to come in." Give details when
+        asked. If asked about insurance again, say Aetna Dental PPO. Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Chris Mendoza", callback_number: "9715550136"}
+      semantic: {preferred_times: "Friday mornings", insurance_carrier: "Aetna Dental PPO",
+                 reason_for_visit: "cleaning"}
+      answers_first_question_from: [kb-insurance-001]
+
+  - id: rc-013
+    title: Parent requesting for a child
+    caller:
+      persona: Parent calling for their 7-year-old son.
+      opening: "Hi, I'd like to get my son in for his first visit with you."
+      facts: {patient_name: "Leo Park", caller_name: "Dana Park", phone: "503 555 0158",
+              times: "after school, around 3:30 on weekdays", insurance: "MetLife PDP Plus",
+              reason: "first checkup"}
+      behavior: >-
+        When asked for a name, give your son's name, Leo Park, and mention you're his mom,
+        Dana. Confirm the read-back.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Leo Park", callback_number: "5035550158"}
+      semantic: {preferred_times: "weekday afternoons around 3:30", insurance_carrier: "MetLife PDP Plus",
+                 reason_for_visit: "first checkup"}
+      note: >-
+        The request records the patient's name. The schema has no separate guardian field
+        yet, so Dana's name may appear only in the transcript; that is acceptable in v1.
+
+  - id: rc-014
+    title: Asks whether they're booked after the save
+    caller:
+      persona: Caller who assumes a request is a confirmed booking.
+      opening: "I'd like a cleaning appointment, I'm new."
+      facts: {name: "Ivy Thompson", phone: "971 555 0172", times: "Wednesday afternoons",
+              insurance: "Delta Dental PPO", reason: "a cleaning"}
+      behavior: >-
+        After the agent says the request was passed on, ask "So I'm booked for Wednesday
+        then?" Then end the call.
+    max_turns: 12
+    expected:
+      request_saved: true
+      request_type: new_patient
+      exact: {name: "Ivy Thompson", callback_number: "9715550172"}
+      semantic: {preferred_times: "Wednesday afternoons", insurance_carrier: "Delta Dental PPO",
+                 reason_for_visit: "cleaning"}
+      after_save_must_not_confirm_booking: true
+
+  - id: rc-015
+    title: Asks for a person partway through
+    caller:
+      persona: Caller who prefers talking to a human.
+      opening: "Hi, I'd like to make an appointment."
+      facts: {name: "Marcus Hill", phone: "503 555 0104", times: "unknown", insurance: "unknown",
+              reason: "unknown"}
+      behavior: >-
+        After giving your name, say "Actually, can I just talk to a real person?" Give your
+        phone number when asked. Confirm the read-back. Don't volunteer anything else.
+    max_turns: 10
+    expected:
+      request_saved: true
+      request_type: callback
+      exact: {name: "Marcus Hill", callback_number: "5035550104"}
+      events: [handoff]
