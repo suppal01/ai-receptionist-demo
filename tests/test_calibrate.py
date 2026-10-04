@@ -17,6 +17,15 @@ def test_seeded_items_take_question_expectations_and_kb_from_their_case():
     assert items["s04-aligner-brand"]["expected_decline"] == "decline_unknown"
 
 
+def test_judging_uses_rubric_v2_with_scoped_s2():
+    from sim.calibrate import load_rubric
+
+    version, criteria = load_rubric()
+    s2 = next(c for c in criteria if c["id"] == "S2")
+    assert version == 2
+    assert "three things only" in s2["question"]
+
+
 def test_only_grades_for_the_requested_run_are_loaded(tmp_path):
     (tmp_path / "s01.json").write_text(json.dumps(
         {"case_id": "s01-wrong-time", "run_id": SEEDED_RUN_ID, "H1": "fail", "P1": "fail", "P2": "pass"}))

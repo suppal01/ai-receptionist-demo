@@ -27,6 +27,12 @@ from sim.judge import JUDGE_PROMPT_VERSION, GeminiJudge, agreement, case_passes
 
 CRITERIA = ("H1", "H2", "P1", "P2", "S1", "S2")
 SEEDED_RUN_ID = "seeded-v1"
+RUBRIC_PATH = Path("sim/rubric_v2.yaml")
+
+
+def load_rubric() -> tuple[int, list[dict]]:
+    data = yaml.safe_load(RUBRIC_PATH.read_text(encoding="utf-8"))
+    return data["version"], data["criteria"]
 
 
 def _cases(path: str | Path) -> dict[str, dict]:
@@ -87,7 +93,7 @@ def main() -> None:
     args = parser.parse_args()
     load_dotenv()
 
-    rubric = yaml.safe_load(Path("sim/rubric_v1.yaml").read_text(encoding="utf-8"))["criteria"]
+    rubric_version, rubric = load_rubric()
     store = None
     if args.run:
         from app.db.store import PostgresStore
@@ -108,7 +114,7 @@ def main() -> None:
         judged = {k: {c: v[c]["verdict"] for c in v} for k, v in verdicts.items() if "error" not in v}
         kinds = {i["id"]: i["kind"] for i in items}
         if store:
-            _save(store, run_id, items, verdicts, judged, human, rubric, args.judge)
+            _save(store, run_id, items, verdicts, judged, human, rubric, args.judge, rubric_version)
     finally:
         if store:
             store.close()
@@ -128,7 +134,7 @@ def main() -> None:
         print(f"  ERROR {k}: {e}")
 
 
-def _save(store, run_id, items, verdicts, judged, human, rubric, judge_model) -> None:
+def _save(store, run_id, items, verdicts, judged, human, rubric, judge_model, rubric_version) -> None:
     from psycopg.types.json import Jsonb
 
     with store.pool.connection() as conn, conn.transaction():
@@ -145,7 +151,8 @@ def _save(store, run_id, items, verdicts, judged, human, rubric, judge_model) ->
                  ok, Jsonb(h) if h else None, run_id, i["id"]),
             )
         conn.execute(
-            "update eval_runs set judge_model = %s, rubric_version = 1 where id = %s", (judge_model, run_id)
+            "update eval_runs set judge_model = %s, rubric_version = %s where id = %s",
+            (judge_model, rubric_version, run_id),
         )
 
 

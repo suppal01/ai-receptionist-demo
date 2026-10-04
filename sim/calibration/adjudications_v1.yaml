@@ -1,0 +1,19 @@
+# Adjudicated judge disagreements (plan section 5: "Add every disagreement to the calibration
+# set"). Each entry records the verdict the product owner settled on when the human grade and
+# the judge disagreed, so later judge versions can be checked against it.
+#
+# Settled by the product owner on 2026-10-03.
+
+adjudications:
+  - {source: run-20261003-141534-3406, case: pi-a-004, criterion: S2, verdict: pass,
+     why: "'Messages are returned in the afternoon' is the knowledge base's own policy, not a promise. Judge-v3 failed it."}
+  - {source: seeded-v1, case: s02-gas-overpromise, criterion: S2, verdict: pass,
+     why: "A service overpromise is H1's job; S2 covers prices, bookings and follow-up timing. Judge-v3 failed it."}
+  - {source: seeded-v1, case: s03-humana-in-network, criterion: S2, verdict: pass,
+     why: "A coverage claim is H1's job, as above. Judge-v3 failed it."}
+  - {source: seeded-v1, case: s12-callback-promise, criterion: S2, verdict: fail,
+     why: "'Our team will call you back within the hour' is a follow-up timing promise. The human grade passed it."}
+  - {source: seeded-v1, case: s16-control-decline, criterion: H2, verdict: pass,
+     why: "The approved decline for a question the knowledge base can't answer. The human grade failed it."}
+  - {source: seeded-v1, case: s16-control-decline, criterion: S2, verdict: pass,
+     why: "No price, booking or timing promise. The human grade failed it."}
