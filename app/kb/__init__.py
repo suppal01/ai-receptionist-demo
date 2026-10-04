@@ -96,15 +96,20 @@ MIN_COVERAGE = 0.5
 KEYWORD_QUERY_MIN_COVERAGE = 0.2
 
 
-def search(query: str, limit: int = 3, min_coverage: float = MIN_COVERAGE) -> list[Hit]:
+def search(query: str, limit: int = 3, keyword_query: bool = False) -> list[Hit]:
     """Return up to `limit` entries that match the query, best first.
 
+    keyword_query: the query is the agent model's keyword list ("dentists doctors providers"),
+    not a caller's sentence. Its unknown words are synonyms the KB doesn't use, so they don't
+    count against a hit; a list made only of unknown words still finds nothing.
     An empty list means the knowledge base has nothing on the question.
     """
     docs, idf = _index()
     terms = set(tokenize(query))
-    # Words the KB never uses get the highest weight: the question is about something else.
-    unseen_weight = math.log(1 + len(docs))
+    # In a caller's sentence, words the KB never uses get the highest weight: the question
+    # is probably about something else.
+    unseen_weight = 0.0 if keyword_query else math.log(1 + len(docs))
+    min_coverage = KEYWORD_QUERY_MIN_COVERAGE if keyword_query else MIN_COVERAGE
     total = sum(idf.get(t, unseen_weight) for t in terms)
     scored = []
     for entry, doc in zip(entries(), docs):

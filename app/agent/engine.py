@@ -11,6 +11,7 @@ Every turn:
 The model never picks the stage, saves a request, or hands off. Code does.
 """
 
+import re
 import time
 import uuid
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from typing import Any
 from app import guardrail, kb
 from app.agent.checks import (
     asks_about_price,
+    asks_if_booked,
     find_banned,
     mentions_price,
     normalize_phone,
@@ -150,8 +152,8 @@ class Engine:
         returned: dict[str, str] = {}
         searches: list[dict[str, Any]] = []
 
-        def search_kb(query: str, min_coverage: float = kb.KEYWORD_QUERY_MIN_COVERAGE) -> list[kb.Hit]:
-            hits = kb.search(query, min_coverage=min_coverage)
+        def search_kb(query: str, keyword_query: bool = True) -> list[kb.Hit]:
+            hits = kb.search(query, keyword_query=keyword_query)
             searches.append({"query": query, "hits": hits})
             returned.update({h.id: h.text for h in hits})
             return hits
@@ -185,6 +187,8 @@ class Engine:
             answer = script("decline_price")
         elif "clinical" in intents:
             answer = script("decline_clinical")
+        elif asks_if_booked(text):
+            answer = script("clarify_not_booked")
         elif "question" in intents:
             failures = self._verify(interp, returned, call)
             events.append(_check("grounding", failures))
@@ -213,18 +217,22 @@ class Engine:
 
         before = dict(call.fields)
         changed, invalid_phone = self._merge(call, interp, events)
+        if not changed and not invalid_phone and intents <= {"other", "provide_info"}:
+            changed = self._take_plain_answer(call, text, events)
         # Contact details mean the caller wants something followed up. Insurance, times or a
         # reason mentioned inside a question are remembered but don't start a request.
         gave_contact = any(call.fields.get(f) != before.get(f) for f in ("name", "callback_number"))
 
-        if "human" in intents:
+        handed_off = "human" in intents
+        if handed_off:
             events.append({"type": "handoff", "payload": {"reason": "caller_asked"}})
-            call.request_type = call.request_type or "callback"
+            # A person will call back: only name and number are needed now.
+            if call.request_type != "urgent":
+                call.request_type = "callback"
             if call.outcome != "emergency":
                 call.outcome = "handoff"
-            self._move(call, "collect", events)
-            parts += [p for p in (answer, script("handoff_human")) if p]
-            return
+            if call.stage != "collect":
+                self._move(call, "collect", events)
 
         if call.stage not in ("collect", "confirm") and ("request" in intents or gave_contact or invalid_phone):
             call.request_type = call.request_type or "new_patient"
@@ -232,6 +240,8 @@ class Engine:
 
         if answer:
             parts.append(answer)
+        if handed_off:
+            parts.append(script("handoff_human"))
         if invalid_phone:
             parts.append(script("invalid_callback"))
 
@@ -286,12 +296,32 @@ class Engine:
             failures.append(f"banned phrases: {', '.join(banned)}")
         return failures
 
+    def _take_plain_answer(self, call: CallState, text: str, events: list[Event]) -> bool:
+        """The caller answered the question just asked, but the model extracted nothing.
+
+        Only for free-text details, and only when the last reply asked for exactly that one.
+        Never for name or phone, which must come from the model and pass validation.
+        """
+        last = next((h["text"] for h in reversed(call.history) if h["role"] == "agent"), "")
+        answer = text.strip()
+        if call.stage != "collect" or "?" in answer or not answer or len(answer) > 200:
+            return False
+        for name in PLAIN_ANSWER_FIELDS:
+            if script(f"ask_{name}") in last and not call.fields.get(name):
+                call.fields[name] = answer
+                events.append({"type": "route", "payload": {"reason": "answer_to_last_question", "field": name}})
+                return True
+        return False
+
     def _merge(self, call: CallState, interp: Interpretation, events: list[Event]) -> tuple[bool, bool]:
         """Store valid fields the caller gave. Returns (anything changed, phone was invalid)."""
         changed = invalid_phone = False
         for name in FIELD_ORDER:
             value = (getattr(interp.fields, name) or "").strip()
             if not value:
+                continue
+            if name == "reason_for_visit" and _is_generic_reason(value):
+                events.append(_check("reason_for_visit", [f"too general to record: {value!r}"]))
                 continue
             if name == "callback_number":
                 phone = normalize_phone(value)
@@ -346,6 +376,22 @@ class Engine:
         if call.stage != to:
             events.append({"type": "route", "payload": {"from": call.stage, "to": to}})
             call.stage = to
+
+
+PLAIN_ANSWER_FIELDS = ("preferred_times", "insurance_carrier", "reason_for_visit")
+
+# A reason made only of these words says nothing about why the caller is coming in
+# ("first visit", "new patient appointment", "son's first visit").
+_GENERIC_REASON_WORDS = {
+    "a", "an", "the", "my", "his", "her", "their", "our", "son's", "daughter's", "child's", "kid's",
+    "new", "patient", "first", "initial", "visit", "appointment", "consultation", "consult", "to",
+    "come", "in", "become", "get", "started", "start", "for", "be", "seen",
+}
+
+
+def _is_generic_reason(value: str) -> bool:
+    words = re.findall(r"[a-z']+", value.lower().replace("’", "'"))
+    return all(w in _GENERIC_REASON_WORDS for w in words)
 
 
 _PROPER_FIRST_WORDS = {

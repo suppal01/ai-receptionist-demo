@@ -5,7 +5,7 @@ from collections import Counter
 
 import pytest
 
-from app.kb import KEYWORD_QUERY_MIN_COVERAGE, entries, search
+from app.kb import entries, search
 
 
 def test_entry_ids_are_unique():
@@ -58,16 +58,18 @@ def test_question_outside_the_kb_returns_nothing(query):
         ("wisdom teeth extraction", "kb-services-restorative-002"),
         ("parent minor 16 accompany guardian", "kb-policy-minors-001"),
         ("comfort amenities comfortable", "kb-comfort-001"),
+        # run-20261004-232945-55f7: unknown synonyms ("doctors", "providers") sank the hit.
+        ("dentists doctors providers", "kb-team-001"),
     ],
 )
 def test_model_keyword_queries_find_their_entry(query, expected_id):
     # Real queries Gemini sent in eval run run-20261001-055604-c0cf that found nothing.
-    assert expected_id in [h.id for h in search(query, min_coverage=KEYWORD_QUERY_MIN_COVERAGE)]
+    assert expected_id in [h.id for h in search(query, keyword_query=True)]
 
 
 @pytest.mark.parametrize("query", ["wifi password", "pharmacy building", "football game"])
 def test_off_topic_keyword_queries_still_find_nothing(query):
-    assert search(query, min_coverage=KEYWORD_QUERY_MIN_COVERAGE) == []
+    assert search(query, keyword_query=True) == []
 
 
 def test_limit_caps_the_number_of_hits():

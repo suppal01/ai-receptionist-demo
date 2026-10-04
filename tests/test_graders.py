@@ -64,3 +64,9 @@ def test_practice_info_v1_loads_and_is_well_formed():
     ts = load_test_set("testsets/practice_info_v1.yaml")
     assert ts["test_set"] == "practice_info" and ts["version"] == 1
     assert len(ts["cases"]) == 60
+
+
+def test_request_capture_v1_loads_as_a_multi_turn_set():
+    ts = load_test_set("testsets/request_capture_v1.yaml")
+    assert ts["test_set"] == "request_capture" and len(ts["cases"]) == 15
+    assert all("caller" in c and "expected" in c for c in ts["cases"])

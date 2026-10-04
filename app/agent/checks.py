@@ -92,6 +92,15 @@ def asks_about_price(text: str) -> bool:
     return _PRICE_QUESTION.search(text) is not None
 
 
+_BOOKED_WORD = re.compile(r"\b(booked|scheduled|confirmed|all set)\b", re.IGNORECASE)
+_QUESTION_START = re.compile(r"^\s*(so|am|is|are|was|did|have|has|we're|i'm|that's|then)\b", re.IGNORECASE)
+
+
+def asks_if_booked(text: str) -> bool:
+    """True when the caller asks whether they now have an appointment ("So I'm booked then?")."""
+    return bool(_BOOKED_WORD.search(text)) and ("?" in text or bool(_QUESTION_START.search(text)))
+
+
 def find_banned(text: str) -> list[str]:
     normalized = text.lower().replace("’", "'")
     return [p for p in banned_phrases() if p.lower() in normalized]

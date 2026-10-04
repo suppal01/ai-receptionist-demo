@@ -160,3 +160,73 @@ def agreement(human: dict, judge: dict, rubric: list[dict], kinds: dict[str, str
         "cases_total": len(shared),
         "disagreements": disagreements,
     }
+
+
+# --- Whole calls ------------------------------------------------------------------------
+
+CALL_CRITERIA = [
+    {"id": "F1", "name": "Details recorded correctly",
+     "question": "Does each saved detail listed under 'Saved vs expected' contain the expected "
+                 "information? Wording may differ and extra accurate detail is fine ('cleaning appointment, "
+                 "new patient' contains 'cleaning'; 'none' and 'no insurance' match). Fail only when the "
+                 "expected information is missing or contradicted. Pass if nothing is listed."},
+    {"id": "P1", "name": "Efficient",
+     "question": "Did the receptionist avoid asking for a detail the caller had already clearly given, and "
+                 "answer every question the caller asked?"},
+]
+
+
+def build_call_prompt(case: dict, transcript: list[dict], saved: list, rubric: list[dict]) -> str:
+    from app import kb
+
+    kb_text = {e.id: e.text for e in kb.entries()}
+    cited = list(dict.fromkeys(
+        c for t in transcript for e in t.get("events", [])
+        if e["type"] == "tool_call" and e["payload"].get("tool") == "search_kb"
+        for c in e["payload"].get("cited", [])
+    ))
+    lines = ["The call (the receptionist's replies are what you grade):"]
+    lines += [f"{'Caller' if t['role'] == 'caller' else 'Receptionist'}: {t['text']}" for t in transcript]
+    lines.append("\nKnowledge-base entries the receptionist cited during the call:")
+    lines += [f"- {i}: {kb_text[i]}" for i in cited if i in kb_text] or ["- (none)"]
+    lines.append("\nSaved vs expected (F1):")
+    record = saved[-1] if saved else None
+    semantic = case["expected"].get("semantic", {})
+    if record is None and semantic:
+        lines.append("- nothing was saved")
+    for field, want in semantic.items():
+        lines.append(f"- {field}: saved {getattr(record, field, None)!r}; expected {want!r}")
+    lines.append("\nApproved fixed wording ({placeholders} are filled in per call):")
+    lines += [f"- {template(n)}" for n in _APPROVED]
+    by_id = {c["id"]: c for c in rubric}
+    criteria = CALL_CRITERIA + [by_id[i] for i in ("H1", "S1", "S2", "P2") if i in by_id]
+    lines.append("\nGrade each criterion pass or fail. H1, S1, S2 and P2 apply to every receptionist "
+                 "reply in the call; one failing reply fails the criterion.")
+    lines += [f"- {c['id']} ({c['name']}): {c['question'].strip()}" for c in criteria]
+    return "\n".join(lines)
+
+
+def _judge_call(self, case: dict, transcript: list[dict], saved: list, rubric: list[dict]) -> dict:
+    """{criterion: {"verdict", "reason"}} for F1, P1, H1, S1, S2, P2, or {"error"}."""
+    from google.genai import types
+
+    ids = ["F1", "P1"] + [i for i in ("H1", "S1", "S2", "P2") if any(c["id"] == i for c in rubric)]
+    try:
+        resp = self.client.models.generate_content(
+            model=self.name,
+            contents=build_call_prompt(case, transcript, saved, rubric),
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM,
+                temperature=0,
+                response_mime_type="application/json",
+                response_json_schema=_schema([{"id": i} for i in ids]),
+            ),
+        )
+        data = json.loads(resp.text)
+        return {i: {"verdict": data[i]["verdict"], "reason": data[i]["reason"]} for i in ids}
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {e}"}
+
+
+# Defined beside the call prompt it uses; a method of GeminiJudge like judge().
+GeminiJudge.judge_call = _judge_call

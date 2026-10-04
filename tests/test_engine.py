@@ -235,6 +235,65 @@ def test_confirm_before_read_back_cannot_save():
     assert result.stage == "collect"
 
 
+# --- Found by the request-capture run (run-20261004-231746-2395) ------------------------
+
+
+def test_generic_reason_is_ignored_and_the_real_reason_is_asked():
+    # rc-004: "I'm looking to book a first visit" was saved as the reason for the visit.
+    engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"reason_for_visit": "first visit"})))
+    result = engine.handle("", "everything, for a first visit")
+    assert result.stage == "collect"
+    assert result.reply.endswith(script("ask_reason_for_visit"))
+    assert "reason_for_visit" not in engine.calls[result.call_id].fields
+
+
+def test_specific_reason_with_generic_words_is_kept():
+    engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"reason_for_visit": "first checkup"})))
+    result = engine.handle("", "everything")
+    assert engine.calls[result.call_id].fields["reason_for_visit"] == "first checkup"
+
+
+def test_plain_answer_to_the_question_just_asked_is_taken_when_the_model_extracts_nothing():
+    # rc-013: "After school, around 3:30 on weekdays" was labeled "other" and asked again.
+    engine, _ = run(step("request", "provide_info", name="Leo Park", callback_number=PHONE), step("other"))
+    first = engine.handle("", "Leo Park, 503 555 0147, appointment please")
+    second = engine.handle(first.call_id, "After school, around 3:30 on weekdays")
+    assert engine.calls[first.call_id].fields["preferred_times"] == "After school, around 3:30 on weekdays"
+    assert second.reply.endswith(script("ask_insurance_carrier"))
+
+
+def test_name_and_number_are_never_taken_from_a_plain_answer():
+    engine, _ = run(step("request"), step("other"))
+    first = engine.handle("", "appointment please")
+    engine.handle(first.call_id, "hmm let me think")
+    assert "name" not in engine.calls[first.call_id].fields
+
+
+def test_asking_for_a_person_mid_request_becomes_a_callback_and_skips_known_details():
+    # rc-015: stayed a new-patient request, re-asked the name, then looped on preferred times.
+    engine, _ = run(
+        step("request"),
+        step("provide_info", "human", name="Marcus Hill"),
+        step("provide_info", callback_number="503 555 0104"),
+    )
+    first = engine.handle("", "I'd like to make an appointment")
+    second = engine.handle(first.call_id, "It's Marcus Hill. Can I just talk to a real person?")
+    assert engine.calls[first.call_id].request_type == "callback"
+    assert script("handoff_human") in second.reply
+    assert second.reply.endswith(script("ask_callback_number"))
+    third = engine.handle(first.call_id, "503 555 0104")
+    assert third.stage == "confirm"
+
+
+def test_am_i_booked_gets_the_fixed_clarification():
+    # rc-014: "So I'm booked for Wednesday then?" after the save got a generic reply.
+    engine, call_id = collected(step("confirm"), step("question"))
+    engine.handle(call_id, "Yes")
+    result = engine.handle(call_id, "So I'm booked for Wednesday then?")
+    assert script("clarify_not_booked") in result.reply
+    assert "booked for" not in result.reply.lower()
+
+
 # --- Guardrail, handoff, goodbye -------------------------------------------------------
 
 

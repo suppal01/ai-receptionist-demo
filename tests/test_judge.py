@@ -110,3 +110,33 @@ def test_agreement_counts_criteria_and_cases():
         {"case_id": "a", "criterion": "P2", "human": "pass", "judge": "fail"},
         {"case_id": "b", "criterion": "H1", "human": "fail", "judge": "pass"},
     ]
+
+
+def test_call_prompt_shows_transcript_saved_values_and_expected_meaning():
+    from app.agent.request_store import RequestRecord
+    from sim.judge import build_call_prompt
+
+    case = {"id": "rc-x", "expected": {"semantic": {"preferred_times": "weekday mornings"}}}
+    transcript = [
+        {"role": "caller", "text": "Mornings work best", "events": []},
+        {"role": "agent", "text": "We close at 1:00 PM on Fridays.",
+         "events": [{"type": "tool_call", "payload": {"tool": "search_kb", "cited": ["kb-hours-001"]}}]},
+    ]
+    saved = [RequestRecord(call_id="c", type="new_patient", name="A B", callback_number="5035550142",
+                           preferred_times="mornings", insurance_carrier="none", reason_for_visit="cleaning")]
+    prompt = build_call_prompt(case, transcript, saved, RUBRIC)
+    for text in ["Mornings work best", "We close at 1:00 PM on Fridays.", "kb-hours-001",
+                 "preferred_times", "weekday mornings", "mornings"]:
+        assert text in prompt
+
+
+def test_call_verdicts_cover_fields_and_rubric():
+    client = FakeClient({"F1": {"verdict": "pass", "reason": "match"}, "H1": {"verdict": "pass", "reason": "ok"},
+                         "S1": {"verdict": "pass", "reason": "ok"}, "S2": {"verdict": "pass", "reason": "ok"},
+                         "P1": {"verdict": "fail", "reason": "asked twice"}, "P2": {"verdict": "pass", "reason": "ok"}})
+    from sim.calibrate import load_rubric
+
+    case = {"id": "rc-x", "expected": {"semantic": {}}}
+    verdicts = GeminiJudge("judge-test", client=client).judge_call(case, [], [], load_rubric()[1])
+    assert verdicts["P1"] == {"verdict": "fail", "reason": "asked twice"}
+    assert set(verdicts) == {"F1", "H1", "S1", "S2", "P1", "P2"}

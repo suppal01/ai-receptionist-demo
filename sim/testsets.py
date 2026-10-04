@@ -14,6 +14,13 @@ def load_test_set(path: str | Path) -> dict:
     if len(ids) != len(set(ids)):
         raise ValueError(f"{path}: duplicate case ids")
     for case in data["cases"]:
+        if "caller" in case:  # multi-turn case, played by the caller simulator
+            for key in ("opening", "facts", "behavior", "persona"):
+                if key not in case["caller"]:
+                    raise ValueError(f"{case['id']}: caller needs {key}")
+            if "request_saved" not in case.get("expected", {}):
+                raise ValueError(f"{case['id']}: expected needs request_saved")
+            continue
         if case["kind"] not in KINDS:
             raise ValueError(f"{case['id']}: unknown kind {case['kind']!r}")
         if case["kind"] == "answerable" and not case.get("expected_ids"):

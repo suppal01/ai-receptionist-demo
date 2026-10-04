@@ -74,9 +74,15 @@ ask_how_help: >-
   I can answer questions about Sparkle Dental or take a request for a new-patient
   appointment. What would you like to do?
 
+# Changed 2026-10-04, pending product-owner approval: the question moved out, so code can
+# ask only for details the caller hasn't given (rc-015 re-asked a name it already had).
 handoff_human: >-
   Of course. I'll pass your details to a team member so they can follow up with you.
-  May I have your name and the best number to reach you?
+
+# Added 2026-10-04, pending product-owner approval (rc-014: "So I'm booked then?").
+clarify_not_booked: >-
+  Not yet. This is a request, not a booked appointment. Our team will follow up with you to
+  find a time.
 
 # PLACEHOLDER until PRD decision D2 (emergency script wording) is made.
 # Used whenever the guardrail triggers; the agent does not run on that turn.
