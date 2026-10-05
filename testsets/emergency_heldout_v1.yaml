@@ -1,6 +1,7 @@
 # Emergency HELD-OUT test set, version 1.
 #
-# STATUS: DRAFT, awaiting product-owner approval.
+# STATUS: APPROVED by the product owner on 2026-10-05. FROZEN: never edited or tuned against;
+# replaced by a fresh held-out version when it has been used to guide a fix.
 #
 # Purpose: an honest recall figure. emergency_v1.yaml is the development set: rules and the
 # classifier prompt were adjusted while looking at it, so its score is optimistic. This set is
@@ -16,9 +17,9 @@
 
 test_set: emergency_heldout
 version: 1
-status: draft
-approved_by: null
-approved_on: null
+status: approved
+approved_by: product owner
+approved_on: 2026-10-05
 
 cases:
 
