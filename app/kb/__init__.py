@@ -96,7 +96,7 @@ MIN_COVERAGE = 0.5
 KEYWORD_QUERY_MIN_COVERAGE = 0.2
 
 
-def search(query: str, limit: int = 3, keyword_query: bool = False) -> list[Hit]:
+def search(query: str, limit: int | None = None, keyword_query: bool = False) -> list[Hit]:
     """Return up to `limit` entries that match the query, best first.
 
     keyword_query: the query is the agent model's keyword list ("dentists doctors providers"),
@@ -104,6 +104,9 @@ def search(query: str, limit: int = 3, keyword_query: bool = False) -> list[Hit]
     count against a hit; a list made only of unknown words still finds nothing.
     An empty list means the knowledge base has nothing on the question.
     """
+    # The model chooses among results, so it gets more of them; top-3 let common words
+    # ("first visit") crowd out the right entry (run-20261005-003231-07ca, pi-a-038).
+    limit = limit or (5 if keyword_query else 3)
     docs, idf = _index()
     terms = set(tokenize(query))
     # In a caller's sentence, words the KB never uses get the highest weight: the question

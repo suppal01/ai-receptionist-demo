@@ -97,10 +97,31 @@ def test_after_max_searches_only_submit_is_allowed():
 
 
 def test_api_error_returns_a_safe_interpretation():
-    client = FakeGenaiClient([RuntimeError("503 unavailable")])
+    client = FakeGenaiClient([RuntimeError("503 unavailable"), RuntimeError("503 unavailable")])
     result = GeminiModel("gemini-test", client=client).interpret(CTX, lambda q: [])
     assert result.intents == ["other"]
     assert "503" in result.error
+
+
+def test_a_google_side_failure_is_retried_once():
+    # 504/499 timeouts failed about 1% of model calls in recent runs.
+    client = FakeGenaiClient([RuntimeError("504 DEADLINE_EXCEEDED"), response(submit())])
+    result = GeminiModel("gemini-test", client=client).interpret(CTX, lambda q: [])
+    assert result.error is None
+    assert result.intents == ["question"]
+    assert len(client.requests) == 2
+
+
+def test_a_second_failure_gives_up_safely():
+    client = FakeGenaiClient([RuntimeError("504 DEADLINE_EXCEEDED"), RuntimeError("503 UNAVAILABLE")])
+    result = GeminiModel("gemini-test", client=client).interpret(CTX, lambda q: [])
+    assert result.intents == ["other"] and "503" in result.error
+
+
+def test_a_bad_answer_is_not_retried():
+    client = FakeGenaiClient([response(call("submit", intents=["made_up_intent"]))])
+    result = GeminiModel("gemini-test", client=client).interpret(CTX, lambda q: [])
+    assert result.error and len(client.requests) == 1
 
 
 def test_invalid_submit_returns_a_safe_interpretation():

@@ -233,6 +233,7 @@ entries:
       Yes, Sparkle Dental is accepting new patients of all ages.
 
   - id: kb-newpatient-002
+    keywords: [long, duration, length, takes, minutes]
     category: new_patients
     approved_text: >-
       A first visit at Sparkle Dental usually includes a review of your health history,

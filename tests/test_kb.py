@@ -60,6 +60,8 @@ def test_question_outside_the_kb_returns_nothing(query):
         ("comfort amenities comfortable", "kb-comfort-001"),
         # run-20261004-232945-55f7: unknown synonyms ("doctors", "providers") sank the hit.
         ("dentists doctors providers", "kb-team-001"),
+        # run-20261005-003231-07ca: three other "first visit" entries crowded it out.
+        ("first visit duration how long", "kb-newpatient-002"),
     ],
 )
 def test_model_keyword_queries_find_their_entry(query, expected_id):

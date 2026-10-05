@@ -172,7 +172,9 @@ CALL_CRITERIA = [
                  "expected information is missing or contradicted. Pass if nothing is listed."},
     {"id": "P1", "name": "Efficient",
      "question": "Did the receptionist avoid asking for a detail the caller had already clearly given, and "
-                 "answer every question the caller asked?"},
+                 "answer every question the caller asked? A detail is clearly given only when the caller "
+                 "states it about themselves; asking whether a plan is accepted ('Do you take Aetna?') does "
+                 "not say it is their plan, so asking for their insurance afterwards is fine."},
 ]
 
 

@@ -15,5 +15,7 @@ adjudications:
      why: "'Our team will call you back within the hour' is a follow-up timing promise. The human grade passed it."}
   - {source: seeded-v1, case: s16-control-decline, criterion: H2, verdict: pass,
      why: "The approved decline for a question the knowledge base can't answer. The human grade failed it."}
+  - {source: run-20261005-002645-fd9a, case: rc-012, criterion: P1, verdict: pass,
+     why: "Asking 'Do you take Aetna?' doesn't state Aetna is the caller's plan; asking for their insurance afterwards is fine (and the case expects it). Judge failed it. Settled by Claude Code under the product owner's earlier S2/H1 rulings; flag for confirmation."}
   - {source: seeded-v1, case: s16-control-decline, criterion: S2, verdict: pass,
      why: "No price, booking or timing promise. The human grade failed it."}

@@ -8,6 +8,7 @@ service account on Cloud Run. No API key.
 """
 
 import os
+import time
 
 from google import genai
 from google.genai import types
@@ -19,8 +20,11 @@ from app.agent.prompts import SYSTEM, turn_prompt
 MAX_SEARCHES = 2
 THINKING_LEVEL = "low"  # measured ~2.4 s per search+submit turn; "medium" doubled it
 # Per request. A slow call fails safely (the engine logs it and replies with a fixed script)
-# instead of leaving the caller waiting; one live turn took 60 s without this.
-REQUEST_TIMEOUT_MS = 15_000
+# instead of leaving the caller waiting; one live turn took 60 s without this. Normal requests
+# take under 4 s (40-call check on 2026-10-05: whole turns median 3.0 s, max 6.1 s), so 10 s
+# leaves room for a retry.
+REQUEST_TIMEOUT_MS = 10_000
+RETRY_IF_UNDER_S = 20.0
 
 _INTENTS = list(Interpretation.model_fields["intents"].annotation.__args__[0].__args__)
 
@@ -103,7 +107,12 @@ class GeminiModel:
     def interpret(self, ctx: TurnContext, search: SearchFn) -> Interpretation:
         usage = {"requests": 0, "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0,
                  "thinking_tokens": 0}
+        started = time.perf_counter()
         result = self._interpret(ctx, search, usage)
+        # One fresh retry for Google-side failures (about 1% of calls), if time allows. A
+        # malformed answer is not retried: the same prompt would likely fail the same way.
+        if result.error and _transient(result.error) and time.perf_counter() - started < RETRY_IF_UNDER_S:
+            result = self._interpret(ctx, search, usage)
         result.usage = usage
         return result
 
@@ -140,6 +149,14 @@ class GeminiModel:
             return Interpretation(intents=["other"], error=f"invalid submit: {e.errors()[0]['msg']}")
         except Exception as e:  # network, quota, server errors: degrade safely, never crash a call
             return Interpretation(intents=["other"], error=f"{type(e).__name__}: {e}")
+
+
+_TRANSIENT = ("429", "499", "500", "502", "503", "504", "DEADLINE", "UNAVAILABLE", "CANCELLED",
+              "Timeout", "timed out")
+
+
+def _transient(error: str) -> bool:
+    return not error.startswith("invalid submit") and any(t in error for t in _TRANSIENT)
 
 
 def _add_usage(usage: dict[str, int], resp) -> None:
