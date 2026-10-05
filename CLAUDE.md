@@ -20,7 +20,7 @@ Standing rules for Claude Code in this repo. Read this and docs/plan.md at the s
 - The guardrail runs before the agent on every turn; keyword rules always run.
 - No prices, no clinical advice.
 - AI disclosure is given at the start of every call.
-- Any prompt, model, or knowledge-base change re-runs the full test sets.
+- Any prompt, model, knowledge-base, fixed-wording (app/agent/scripts.yaml) or engine-logic change (stages, checks, search) re-runs the full test sets. Every deploy must match a version whose full test-set runs met the targets. (Engine changes and the pre-deploy run added by the product owner on 2026-10-04.)
 - Secrets only through environment variables; never commit keys.
 
 ## Working rules

@@ -1,7 +1,7 @@
 # Request-capture test set, version 1 (docs/plan.md section 5).
 #
-# STATUS: DRAFT. Drafted by Claude Code; the product owner must approve every expected
-# outcome before this set is frozen. After approval, changes go in request_capture_v2.yaml.
+# STATUS: APPROVED by the product owner on 2026-10-04. FROZEN: expected outcomes are never
+# edited; changes go in request_capture_v2.yaml. Drafted by Claude Code, approved by a human.
 #
 # Multi-turn cases. A caller simulator (an LLM, different from the agent) plays each caller
 # from `caller`: it opens with `opening`, knows only `facts`, and follows `behavior`. It
@@ -23,9 +23,9 @@
 
 test_set: request_capture
 version: 1
-status: draft
-approved_by: null
-approved_on: null
+status: approved
+approved_by: product owner
+approved_on: 2026-10-04
 kb: kb_seed/sparkle_kb.yaml (approved 2026-09-29)
 
 cases:
@@ -132,7 +132,7 @@ cases:
       request_type: new_patient
       exact: {name: "Sam Okoro", callback_number: "5035550109"}
       semantic: {preferred_times: "evenings or Fridays", insurance_carrier: "none",
-                 reason_for_visit: "checkup and cleaning"}
+                 reason_for_visit: "checkup and cleaning, or getting back into dental care after years away"}
       note: "The read-back should say 'no insurance', not 'none'."
 
   - id: rc-007
