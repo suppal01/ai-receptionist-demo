@@ -101,6 +101,20 @@ def asks_if_booked(text: str) -> bool:
     return bool(_BOOKED_WORD.search(text)) and ("?" in text or bool(_QUESTION_START.search(text)))
 
 
+_YES_START = re.compile(
+    r"^\s*(yes|yeah|yep|yup|correct|right|that's right|that is right|that's correct|"
+    r"all correct|sounds good|perfect|exactly|looks good)\b",
+    re.IGNORECASE,
+)
+_NOT_PLAIN = re.compile(r"\d|\b(but|except|actually|no|not|wrong|change|instead)\b", re.IGNORECASE)
+
+
+def is_plain_yes(text: str) -> bool:
+    """A bare confirmation ("Yes, that's all correct.") with no change in it."""
+    t = text.replace("’", "'")
+    return bool(_YES_START.search(t)) and not _NOT_PLAIN.search(t) and len(t) <= 80
+
+
 def find_banned(text: str) -> list[str]:
     normalized = text.lower().replace("’", "'")
     return [p for p in banned_phrases() if p.lower() in normalized]

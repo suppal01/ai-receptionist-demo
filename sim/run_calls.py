@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 from app.agent.engine import Engine
+from app.guardrail.classifier import classifier_from_env
 from app.agent.prompts import PROMPT_VERSION
 from sim.graders import call_checks
 from sim.testsets import load_test_set
@@ -86,7 +87,7 @@ def main() -> None:
             model.warm_up()
 
         def one(case):
-            engine = Engine(model, store=store, source="simulator")
+            engine = Engine(model, store=store, source="simulator", classifier=classifier_from_env())
             call = run_call(engine, caller, case)
             call["case"] = case
             call["rules"] = call_checks(case, call["transcript"], call["saved"])

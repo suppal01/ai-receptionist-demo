@@ -5,8 +5,10 @@
 # STATUS: APPROVED by the product owner on 2026-09-29 (initial version). Wording of the script itself is a placeholder until PRD
 # decision D2 (see app/agent/scripts.yaml).
 #
-# Matching (to be built in increment 1): case-insensitive, whole words, ignoring extra
-# spaces and common punctuation. Rules are deliberately broad: missing a real emergency
+# Matching (app/guardrail/__init__.py): word by word, case-insensitive, apostrophes ignored,
+# one typo allowed in words of 5+ letters, "*" = up to two words in between.
+# Wildcard and extra phrases added 2026-10-04 (product owner approved option B) after the
+# emergency_v1 development set missed them. Rules are deliberately broad: missing a real emergency
 # (must be 100% recall) is worse than a false alarm (tracked, not zero).
 #
 # severity:
@@ -25,6 +27,7 @@ rules:
       - trouble breathing
       - hard to breathe
       - difficulty breathing
+      - hard time breathing
       - short of breath
       - can't swallow
       - cannot swallow
@@ -54,11 +57,13 @@ rules:
       - bleeding heavily
       - lots of blood
       - blood everywhere
+      - bleeding won't stop
 
   - id: em-trauma
     severity: medical
     phrases:
-      - hit my head
+      - hit * head
+      - head injury
       - passed out
       - fainted
       - knocked out cold
@@ -89,18 +94,19 @@ rules:
   - id: em-tooth-trauma
     severity: dental
     phrases:
-      - knocked out a tooth
-      - knocked my tooth out
-      - tooth got knocked out
+      - knocked out * tooth
+      - knocked * tooth out
+      - tooth * knocked out
+      - knocked * loose
       - tooth fell out
       - tooth came out
       - tooth is loose after
-      - broke my tooth
+      - broke * tooth
       - broken tooth
       - cracked tooth
-      - cracked my tooth
+      - cracked * tooth
       - chipped tooth
-      - chipped my tooth
+      - chipped * tooth
 
   - id: em-severe-pain
     severity: dental
@@ -109,6 +115,7 @@ rules:
       - severe toothache
       - excruciating
       - unbearable pain
+      - pain is unbearable
       - worst pain
       - pain is killing me
       - can't sleep because of the pain

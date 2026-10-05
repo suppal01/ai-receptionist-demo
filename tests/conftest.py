@@ -9,3 +9,4 @@ import os
 
 os.environ["DATABASE_URL"] = ""
 os.environ["AGENT_MODEL"] = ""
+os.environ["EMERGENCY_MODEL"] = ""

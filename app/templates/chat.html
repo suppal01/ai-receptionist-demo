@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sparkle Dental · Test Call</title>
+<style>
+  /* One call on the left, what the system did each turn on the right. */
+  :root {
+    --paper: #f4f6f7; --card: #ffffff; --ink: #18232b; --muted: #5e6c77; --line: #d8dfe4;
+    --accent: #0d6b72; --accent-ink: #ffffff; --caller: #e3f0f0; --agent: #ffffff;
+    --pass: #1f7a46; --fail: #b3261e; --warn: #8a5a00; --chip: #eef2f4;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper: #0f1519; --card: #172027; --ink: #e3eaee; --muted: #97a6b1; --line: #2a3640;
+      --accent: #5fbfc4; --accent-ink: #0f1519; --caller: #163236; --agent: #172027;
+      --pass: #6fcf97; --fail: #f2837a; --warn: #e5b85c; --chip: #1d2830; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid; gap: 16px;
+          grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); height: 100vh; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); height: auto; } }
+  header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+  h1 { font-size: 1.25rem; margin: 0; }
+  .muted { color: var(--muted); }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; display: flex;
+           flex-direction: column; min-height: 0; }
+  .panel h2 { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+              margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  #log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 320px; }
+  .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; border: 1px solid var(--line); }
+  .msg.caller { align-self: flex-end; background: var(--caller); border-color: transparent; }
+  .msg.agent { align-self: flex-start; background: var(--agent); }
+  .msg .who { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 2px; }
+  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+  input { flex: 1; min-width: 0; font: inherit; padding: 9px 12px; border: 1px solid var(--line);
+          border-radius: 8px; background: var(--card); color: var(--ink); }
+  button { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--accent);
+           background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #turns { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .turn { border-bottom: 1px dashed var(--line); padding-bottom: 10px; display: grid; gap: 4px; font-size: 0.88rem; }
+  .turn b { font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font: 0.75rem var(--mono); background: var(--chip); border-radius: 4px; padding: 1px 6px; }
+  .chip.bad { color: var(--fail); } .chip.good { color: var(--pass); } .chip.warn { color: var(--warn); }
+  .empty { color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Sparkle Dental · test call</h1>
+    <span class="muted">Type as the caller. Synthetic data only: use made-up names and 555-01xx numbers.</span>
+    <span class="muted" id="callinfo"></span>
+  </header>
+
+  <section class="panel" aria-label="Conversation">
+    <h2>Call</h2>
+    <div id="log" aria-live="polite"><p class="empty">Say hello, ask a question, or ask for an appointment to start a call.</p></div>
+    <form id="form">
+      <input id="message" autocomplete="off" placeholder="e.g. Do you take Delta Dental?" aria-label="Your message" required>
+      <button id="send" type="submit">Send</button>
+      <button id="newcall" class="secondary" type="button">New call</button>
+    </form>
+  </section>
+
+  <section class="panel" aria-label="What happened each turn">
+    <h2>Each turn</h2>
+    <div id="turns"><p class="empty">Stage, knowledge-base citations, checks and guardrail results appear here.</p></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  let callId = "";
+  let turnNo = 0;
+  const log = document.getElementById("log");
+  const turns = document.getElementById("turns");
+  const input = document.getElementById("message");
+  const send = document.getElementById("send");
+  const info = document.getElementById("callinfo");
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function addMsg(role, text) {
+    if (log.querySelector(".empty")) log.replaceChildren();
+    const m = el("div", "msg " + role);
+    m.append(el("span", "who", role === "caller" ? "You" : "Receptionist"), document.createTextNode(text));
+    log.append(m);
+    log.scrollTop = log.scrollHeight;
+  }
+  function chip(text, kind) { return el("span", "chip" + (kind ? " " + kind : ""), text); }
+
+  function addTurn(data) {
+    if (turns.querySelector(".empty")) turns.replaceChildren();
+    turnNo += 1;
+    const t = el("div", "turn");
+    t.append(el("b", null, "Turn " + turnNo + " · stage " + data.stage + (data.ended ? " · call ended" : "")));
+    const chips = el("div", "chips");
+    for (const e of data.events) {
+      const p = e.payload || {};
+      if (e.type === "guardrail") chips.append(chip(p.triggered ? "EMERGENCY: " + p.phrase : "guardrail ok", p.triggered ? "bad" : "good"));
+      else if (e.type === "model") {
+        chips.append(chip((p.intents || []).join(", ") + " · " + p.ms + " ms"));
+        if (p.error) chips.append(chip("model error", "bad"));
+      } else if (e.type === "tool_call" && p.tool === "search_kb") {
+        for (const c of p.cited || []) chips.append(chip("cited " + c, "good"));
+      } else if (e.type === "tool_call" && p.tool === "save_request") chips.append(chip("saved " + p.request_id, "good"));
+      else if (e.type === "check" && !p.passed) chips.append(chip(p.check + " failed", "warn"));
+      else if (e.type === "handoff") chips.append(chip("handoff: " + p.reason, "warn"));
+      else if (e.type === "route" && p.to) chips.append(chip(p.from + " → " + p.to));
+      else if (e.type === "storage") chips.append(chip("storage error", "bad"));
+    }
+    t.append(chips);
+    turns.append(t);
+    turns.scrollTop = turns.scrollHeight;
+  }
+
+  document.getElementById("form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    addMsg("caller", text);
+    input.value = "";
+    send.disabled = true;
+    try {
+      const resp = await fetch("/api/turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(callId ? { call_id: callId, text } : { text }),
+      });
+      if (!resp.ok) throw new Error("The server answered " + resp.status);
+      const data = await resp.json();
+      callId = data.call_id;
+      info.textContent = "Call " + callId.slice(0, 8);
+      addMsg("agent", data.reply);
+      addTurn(data);
+      if (data.ended) { input.placeholder = "Call ended. Start a new call to continue."; }
+    } catch (e) {
+      addMsg("agent", "Couldn't reach the receptionist: " + e.message + ". Try again.");
+    } finally {
+      send.disabled = false;
+      input.focus();
+    }
+  });
+
+  document.getElementById("newcall").addEventListener("click", () => {
+    callId = ""; turnNo = 0; info.textContent = "";
+    log.replaceChildren(el("p", "empty", "New call. Say hello, ask a question, or ask for an appointment."));
+    turns.replaceChildren(el("p", "empty", "Stage, knowledge-base citations, checks and guardrail results appear here."));
+    input.placeholder = "e.g. Do you take Delta Dental?";
+    input.focus();
+  });
+})();
+</script>
+</body>
+</html>

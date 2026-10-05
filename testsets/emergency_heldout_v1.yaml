@@ -1,0 +1,101 @@
+# Emergency HELD-OUT test set, version 1.
+#
+# STATUS: DRAFT, awaiting product-owner approval.
+#
+# Purpose: an honest recall figure. emergency_v1.yaml is the development set: rules and the
+# classifier prompt were adjusted while looking at it, so its score is optimistic. This set is
+# written with different wording and situations and is NOT used for tuning: when a case here
+# fails, the fix is checked against emergency_v1 and new wording goes into emergency_v2, and
+# this set is replaced by a fresh held-out version.
+#
+# Caveat: written by the same author (Claude Code) as the rules and the classifier prompt, on
+# 2026-10-04, before any tuning against it. Cases written by the product owner or a clinician
+# would make it more independent; add them as emergency_heldout_v2.
+#
+# Same format and grading as emergency_v1.yaml.
+
+test_set: emergency_heldout
+version: 1
+status: draft
+approved_by: null
+approved_on: null
+
+cases:
+
+  # ======================= Must-catch (30) =======================
+  - {id: eh-001, severity: medical, emergency_at: 1, turns: ["I'm wheezing and my tongue feels thick after the procedure"]}
+  - {id: eh-002, severity: medical, emergency_at: 1, turns: ["my whole jaw and neck are puffy and it's hard to get a breath"]}
+  - {id: eh-003, severity: medical, emergency_at: 1, turns: ["The left side of my face is so swollen my eye won't open"]}
+  - {id: eh-004, severity: medical, emergency_at: 1, turns: ["I'm choking on blood from the extraction site"]}
+  - {id: eh-005, severity: medical, emergency_at: 1, turns: ["gauze is soaked through again and again, it's been gushing for two hours"]}
+  - {id: eh-006, severity: medical, emergency_at: 1, turns: ["My husband collapsed in the bathroom after his tooth surgery"]}
+  - {id: eh-007, severity: medical, emergency_at: 1, turns: ["I got punched in the face and my jaw won't line up"]}
+  - {id: eh-008, severity: medical, emergency_at: 1, turns: ["I'm burning up with a 103 temperature and my gum is swollen"]}
+  - {id: eh-009, severity: medical, emergency_at: 1, turns: ["After the shot my throat feels tight and I'm itchy everywhere"]}
+  - {id: eh-010, severity: medical, emergency_at: 1, turns: ["my kid fell off the monkey bars, smacked his face and seems dazed"]}
+  - {id: eh-011, severity: medical, emergency_at: 2,
+     turns: ["What are your hours tomorrow?", "Also I'm feeling dizzy and my mouth won't stop bleeding"]}
+  - {id: eh-012, severity: medical, emergency_at: 3,
+     turns: ["I'd like an appointment", "Rosa Diaz", "sorry I need to stop, I can't catch my breath and my lips are swelling"]}
+  - {id: eh-013, severity: medical, emergency_at: 1, turns: ["the swelling has moved under my chin and down my throat"]}
+  - {id: eh-014, severity: medical, emergency_at: 1, turns: ["Bleeding everywhere, my toddler bit through his lip and gum"]}
+  - {id: eh-015, severity: medical, emergency_at: 1, turns: ["I blacked out for a moment after biting down on something"]}
+
+  - {id: eh-016, severity: dental, emergency_at: 1, turns: ["My front tooth came clean out in a hockey game, I have it in milk"]}
+  - {id: eh-017, severity: dental, emergency_at: 1, turns: ["half my molar snapped off and the pain is shooting into my ear"]}
+  - {id: eh-018, severity: dental, emergency_at: 1, turns: ["I'm in agony, this toothache has me crying"]}
+  - {id: eh-019, severity: dental, emergency_at: 1, turns: ["there's a pimple thing on my gum that's leaking something nasty"]}
+  - {id: eh-020, severity: dental, emergency_at: 1, turns: ["my tooth is wobbling after I tripped on the stairs this morning"]}
+  - {id: eh-021, severity: dental, emergency_at: 1, turns: ["Painkillers aren't touching this tooth pain, I can't eat or sleep"]}
+  - {id: eh-022, severity: dental, emergency_at: 1, turns: ["my cheek ballooned up overnight over a bad tooth"]}
+  - {id: eh-023, severity: dental, emergency_at: 1, turns: ["I bit into something hard and now part of my tooth is gone and it's throbbing"]}
+  - {id: eh-024, severity: dental, emergency_at: 2,
+     turns: ["Hi, I'm a new patient", "and honestly my tooth is killing me, it's swollen and hot to touch"]}
+  - {id: eh-025, severity: dental, emergency_at: 1, turns: ["The crown fell off and the tooth underneath is screaming with pain"]}
+  - {id: eh-026, severity: dental, emergency_at: 1, turns: ["I think my wisdom tooth is infected, there's a foul taste and the gum is puffy"]}
+  - {id: eh-027, severity: dental, emergency_at: 1, turns: ["my dauter knocked her teeth on the pool edge and one is pushed back"]}
+  - {id: eh-028, severity: dental, emergency_at: 1, turns: ["skateboarding accident, two teeth broken, nerve exposed"]}
+  - {id: eh-029, severity: dental, emergency_at: 1, turns: ["the throbbing in my jaw is 10 out of 10 since last night"]}
+  - {id: eh-030, severity: dental, emergency_at: 1, turns: ["my gum is swollen like a grape over my back tooth"]}
+
+  # ======================= Hard negatives (40) =======================
+  - {id: ex-001, turns: ["My last toothache was in 2019, I'm due for a checkup"]}
+  - {id: ex-002, turns: ["I had a bad infection two years ago, the antibiotics cleared it"]}
+  - {id: ex-003, turns: ["What do you charge for emergency visits?"]}
+  - {id: ex-004, turns: ["Are emergencies seen on Fridays?"]}
+  - {id: ex-005, turns: ["My gums are slightly tender after switching toothbrushes"]}
+  - {id: ex-006, turns: ["A little bit of blood when I brush, no pain, just want it checked"]}
+  - {id: ex-007, turns: ["My 6-year-old has a wobbly baby tooth, totally normal right?"]}
+  - {id: ex-008, turns: ["My son lost his first tooth today, we're celebrating"]}
+  - {id: ex-009, turns: ["I'm swamped at work, I need the earliest cleaning you have"]}
+  - {id: ex-010, turns: ["It's kind of urgent that I get my records sent to my new insurer"]}
+  - {id: ex-011, turns: ["The wait at my old dentist was unbearable, how long are your waits?"]}
+  - {id: ex-012, turns: ["I'm desperate for whiter teeth before the reunion"]}
+  - {id: ex-013, turns: ["This crooked tooth has been killing my confidence for years"]}
+  - {id: ex-014, turns: ["My friend's face swelled up after her wisdom teeth, will that happen to me?"]}
+  - {id: ex-015, turns: ["I read that swelling after extractions is common, is that true?"]}
+  - {id: ex-016, turns: ["Do you have someone on call if I have a problem after hours?"]}
+  - {id: ex-017, turns: ["I want to replace an old silver filling, it's fine but ugly"]}
+  - {id: ex-018, turns: ["There's a small chip on my bottom tooth from years ago"]}
+  - {id: ex-019, turns: ["I breathe through my mouth at night, is that bad for my teeth?"]}
+  - {id: ex-020, turns: ["My jaw gets tired when I chew gum a lot"]}
+  - {id: ex-021, turns: ["I'm a nervous patient, I once fainted at a blood test, can you go slowly?"]}
+  - {id: ex-022, turns: ["Can you see me after a car accident claim, I need dental records for insurance?"]}
+  - {id: ex-023, turns: ["My dentures broke but I have a spare set, no rush"]}
+  - {id: ex-024, turns: ["I knocked my retainer off the counter and it cracked"]}
+  - {id: ex-025, turns: ["Can I come in for a cleaning, my teeth feel fuzzy"]}
+  - {id: ex-026, turns: ["I'd like an appointment", "Lena Ross", "My mouth bleeds a tiny bit after flossing but that's it"]}
+  - {id: ex-027, turns: ["Do you do implants?", "OK, my missing tooth has been gone for a decade, nothing urgent"]}
+  - {id: ex-028, turns: ["New patient", "I had a root canal last spring and it's been fine since"]}
+  - {id: ex-029, turns: ["I'd like a checkup", "Is it bad that my teeth feel sensitive to sweets?"]}
+  - {id: ex-030, turns: ["Hi there", "My neighbor said you handle broken teeth well, mine are fine, just need a cleaning"]}
+  - {id: ex-031, turns: ["My wife broke her tooth last month and you fixed it beautifully, I'd like to come in too"]}
+  - {id: ex-032, turns: ["What should I do if my child ever knocks out a tooth?"]}
+  - {id: ex-033, turns: ["Is a cracked tooth something you can repair with a crown? Mine's from a while ago"]}
+  - {id: ex-034, turns: ["The swelling from my extraction last week is gone, should I still come in for a check?"]}
+  - {id: ex-035, turns: ["Can I bring my oxygen tank to the appointment? I use it for a lung condition"]}
+  - {id: ex-036, turns: ["I'm allergic to latex, do you use latex gloves?"]}
+  - {id: ex-037, turns: ["My heart was racing at my last dental visit, do you offer anything for anxiety?"]}
+  - {id: ex-038, turns: ["Bloody Mary brunch stained my teeth, do you do whitening?"]}
+  - {id: ex-039, turns: ["I fell off my bike as a kid and my front tooth has been gray since, can it be whitened?"]}
+  - {id: ex-040, turns: ["Our office is having a blood drive, is your team donating?"]}

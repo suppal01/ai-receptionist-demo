@@ -294,6 +294,28 @@ def test_am_i_booked_gets_the_fixed_clarification():
     assert "booked for" not in result.reply.lower()
 
 
+@pytest.mark.parametrize("reply", ["Yes, that's all correct.", "yep", "That's right", "Correct, thanks"])
+def test_plain_yes_at_the_read_back_confirms_even_if_mislabeled(reply):
+    # rc-010 (run-20261005-000706-8781): "Yes, that's all correct." was labeled "other".
+    engine, call_id = collected(step("other"))
+    result = engine.handle(call_id, reply)
+    assert result.stage == "close"
+    assert len(engine.requests) == 1
+
+
+def test_yes_with_a_change_is_not_a_plain_confirmation():
+    engine, call_id = collected(step("other"))
+    engine.handle(call_id, "Yes, but the number ends in 0174")
+    assert engine.requests == {}
+
+
+def test_bracketed_extras_are_removed_from_the_name():
+    # rc-013: the model saved "Leo Park (mom: Dana)".
+    engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park (mom: Dana)"})))
+    result = engine.handle("", "everything")
+    assert engine.calls[result.call_id].fields["name"] == "Leo Park"
+
+
 # --- Guardrail, handoff, goodbye -------------------------------------------------------
 
 

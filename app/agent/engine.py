@@ -14,6 +14,7 @@ The model never picks the stage, saves a request, or hands off. Code does.
 import re
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,6 +22,7 @@ from app import guardrail, kb
 from app.agent.checks import (
     asks_about_price,
     asks_if_booked,
+    is_plain_yes,
     find_banned,
     mentions_price,
     normalize_phone,
@@ -33,9 +35,15 @@ from app.agent.request_store import REQUIRED_FIELDS, RequestRecord
 from app.agent.scripts import script
 from app.agent.state import CallState
 from app.db.store import CallStore, MemoryStore
+from app.guardrail.classifier import EmergencyClassifier
 from app.logs import log
 
 Event = dict[str, Any]
+
+# Classifier calls run beside the agent's model call. How long to wait for its verdict once
+# the agent's model has answered (its own request timeout is 8 s).
+_POOL = ThreadPoolExecutor(max_workers=16, thread_name_prefix="classifier")
+CLASSIFIER_WAIT_S = 8.0
 
 
 @dataclass
@@ -48,8 +56,15 @@ class TurnResult:
 
 
 class Engine:
-    def __init__(self, model: AgentModel, store: CallStore | None = None, source: str = "api"):
+    def __init__(
+        self,
+        model: AgentModel,
+        store: CallStore | None = None,
+        source: str = "api",
+        classifier: EmergencyClassifier | None = None,
+    ):
         self.model = model
+        self.classifier = classifier  # second guardrail layer; None = keywords only
         self.store = store or MemoryStore()
         self.source = source  # "api" for the endpoint, "simulator" for scripted and eval runs
         # Calls this engine has handled; a fallback if the store can't be read.
@@ -74,7 +89,7 @@ class Engine:
         events.append(
             {
                 "type": "guardrail",
-                "payload": {"triggered": match is not None}
+                "payload": {"source": "keywords", "triggered": match is not None}
                 | (
                     {"rule_id": match.rule_id, "severity": match.severity, "phrase": match.phrase}
                     if match
@@ -83,15 +98,13 @@ class Engine:
             }
         )
         if match:
-            parts.append(script("emergency"))
-            events.append(
-                {"type": "handoff", "payload": {"reason": "emergency", "severity": match.severity}}
-            )
-            call.request_type = "urgent"
-            call.outcome = "emergency"
-            self._move(call, "emergency", events)
+            self._escalate(call, match.severity, "keywords", events, parts)
         else:
-            self._agent_turn(call, text, events, parts)
+            # The classifier reads the message at the same time as the agent's model.
+            screening = (
+                _POOL.submit(self.classifier.classify, text, list(call.history)) if self.classifier else None
+            )
+            self._agent_turn(call, text, events, parts, screening)
 
         reply = " ".join(parts)
         banned = find_banned(reply)
@@ -104,6 +117,32 @@ class Engine:
         call.history += [{"role": "caller", "text": text}, {"role": "agent", "text": reply}]
         self._record(call, text, reply, events)
         return TurnResult(call.id, reply, call.stage, events, call.ended)
+
+    def _escalate(self, call: CallState, severity: str, source: str, events: list[Event], parts: list[str]):
+        parts.append(script("emergency"))
+        events.append(
+            {"type": "handoff", "payload": {"reason": "emergency", "severity": severity, "source": source}}
+        )
+        call.request_type = "urgent"
+        call.outcome = "emergency"
+        self._move(call, "emergency", events)
+
+    def _screened_emergency(self, screening, events: list[Event]):
+        """The classifier's verdict, logged as a second guardrail event. None if not an emergency
+        (or the classifier failed or was too slow: the keywords already ran)."""
+        if screening is None:
+            return None
+        started = time.perf_counter()
+        payload = {"source": "classifier", "model": self.classifier.name, "triggered": False}
+        try:
+            result = screening.result(timeout=CLASSIFIER_WAIT_S)
+            payload |= {"triggered": result.emergency, "severity": result.severity, "reason": result.reason}
+        except Exception as e:
+            payload["error"] = f"{type(e).__name__}: {e}"
+            result = None
+        payload["waited_ms"] = round((time.perf_counter() - started) * 1000)
+        events.append({"type": "guardrail", "payload": payload})
+        return result if result and result.emergency else None
 
     def _find_call(self, call_id: str, events: list[Event]) -> CallState | None:
         """The store is the source of truth: another instance may have handled the last turn.
@@ -136,7 +175,7 @@ class Engine:
             stage=call.stage,
             outcome=call.outcome,
             ended=call.ended,
-            guardrail_triggered=events[0]["payload"]["triggered"],
+            guardrail_triggered=any(e["payload"].get("triggered") for e in events if e["type"] == "guardrail"),
             model=model.get("model"),
             model_ms=model.get("ms"),
             model_error=model.get("error"),
@@ -148,7 +187,7 @@ class Engine:
             requests_saved=[r.id for r in self._new_requests],
         )
 
-    def _agent_turn(self, call: CallState, text: str, events: list[Event], parts: list[str]):
+    def _agent_turn(self, call: CallState, text: str, events: list[Event], parts: list[str], screening=None):
         returned: dict[str, str] = {}
         searches: list[dict[str, Any]] = []
 
@@ -176,6 +215,11 @@ class Engine:
                 },
             }
         )
+        # Before the agent's interpretation changes anything, hear the classifier out.
+        flagged = self._screened_emergency(screening, events)
+        if flagged:
+            self._escalate(call, flagged.severity, "classifier", events, parts)
+            return
         intents = set(interp.intents)
         if asks_about_price(text) and "price" not in intents:
             intents.add("price")
@@ -248,7 +292,10 @@ class Engine:
         if call.stage == "confirm":
             if changed:
                 parts.append(self._read_back(call))
-            elif "confirm" in intents:
+            elif "confirm" in intents or (
+                # Backstop: a bare "yes, that's right" the model mislabeled (rc-010).
+                not intents & {"deny", "correction", "question"} and is_plain_yes(text)
+            ):
                 parts.append(self._save(call, events))
             elif "deny" in intents:
                 parts.append(script("ask_correction"))
@@ -320,6 +367,11 @@ class Engine:
             value = (getattr(interp.fields, name) or "").strip()
             if not value:
                 continue
+            if name == "name":
+                # Asides belong in the transcript, not the name ("Leo Park (mom: Dana)", rc-013).
+                value = re.sub(r"\s*\([^)]*\)", "", value).strip()
+                if not value:
+                    continue
             if name == "reason_for_visit" and _is_generic_reason(value):
                 events.append(_check("reason_for_visit", [f"too general to record: {value!r}"]))
                 continue

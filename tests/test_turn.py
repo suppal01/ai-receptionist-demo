@@ -36,6 +36,14 @@ def test_store_is_memory_without_database_url(monkeypatch):
     assert isinstance(store_from_env(), MemoryStore)
 
 
+def test_chat_page_is_served_and_talks_to_the_turn_endpoint():
+    resp = client.get("/chat")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/html")
+    assert "/api/turn" in resp.text
+    assert 'id="message"' in resp.text
+
+
 def test_health():
     resp = client.get("/health")
     assert resp.status_code == 200

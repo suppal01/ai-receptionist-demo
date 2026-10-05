@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 from app.agent.engine import Engine
+from app.guardrail.classifier import classifier_from_env
 from app.agent.prompts import PROMPT_VERSION
 from sim.graders import cited_ids, rule_checks
 from sim.testsets import load_test_set
@@ -99,7 +100,7 @@ def main() -> None:
     try:
         if hasattr(model, "warm_up"):
             model.warm_up()
-        results = run_cases(Engine(model, store=store, source="simulator"), cases)
+        results = run_cases(Engine(model, store=store, source="simulator", classifier=classifier_from_env()), cases)
         run_id = save_run(store, test_set, model.name, results, args.notes)
     finally:
         store.close()

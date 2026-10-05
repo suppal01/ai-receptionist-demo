@@ -16,9 +16,10 @@ from app.api.routes import engine, router
 async def lifespan(_app: FastAPI):
     # Warm the model connection in the background so the first caller isn't kept waiting
     # and startup (and the Cloud Run health check) isn't blocked by it.
-    warm_up = getattr(engine.model, "warm_up", None)
-    if warm_up:
-        threading.Thread(target=warm_up, daemon=True).start()
+    for part in (engine.model, engine.classifier):
+        warm_up = getattr(part, "warm_up", None)
+        if warm_up:
+            threading.Thread(target=warm_up, daemon=True).start()
     yield
 
 
