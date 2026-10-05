@@ -168,14 +168,21 @@ CALL_CRITERIA = [
     {"id": "F1", "name": "Details recorded correctly",
      "question": "Does each saved detail listed under 'Saved vs expected' contain the expected "
                  "information? Wording may differ and extra accurate detail is fine ('cleaning appointment, "
-                 "new patient' contains 'cleaning'; 'none' and 'no insurance' match). Fail only when the "
-                 "expected information is missing or contradicted. Pass if nothing is listed."},
+                 "new patient' contains 'cleaning'; 'none' and 'no insurance' match). An expected value with "
+                 "'/' or ' or ' lists acceptable alternatives: matching any one of them is enough. Fail only "
+                 "when the expected information is missing or contradicted. Pass if nothing is listed."},
     {"id": "P1", "name": "Efficient",
      "question": "Did the receptionist avoid asking for a detail the caller had already clearly given, and "
                  "answer every question the caller asked? A detail is clearly given only when the caller "
                  "states it about themselves; asking whether a plan is accepted ('Do you take Aetna?') does "
                  "not say it is their plan, so asking for their insurance afterwards is fine."},
 ]
+
+
+# call-judge-v2 (2026-10-05): '/' and 'or' list alternatives in expected values (rc-006,
+# rc-009); a read-back of the caller's details is not an H1 claim (rc-012). Not yet
+# calibrated against human grades.
+CALL_JUDGE_PROMPT_VERSION = "call-judge-v2"
 
 
 def build_call_prompt(case: dict, transcript: list[dict], saved: list, rubric: list[dict]) -> str:
@@ -203,7 +210,10 @@ def build_call_prompt(case: dict, transcript: list[dict], saved: list, rubric: l
     by_id = {c["id"]: c for c in rubric}
     criteria = CALL_CRITERIA + [by_id[i] for i in ("H1", "S1", "S2", "P2") if i in by_id]
     lines.append("\nGrade each criterion pass or fail. H1, S1, S2 and P2 apply to every receptionist "
-                 "reply in the call; one failing reply fails the criterion.")
+                 "reply in the call; one failing reply fails the criterion. A read-back of the caller's own "
+                 "details ('Here's what I have: ... Is all of that correct?') is a question for the caller "
+                 "to confirm, not a claim about the practice: it never fails H1; whether the saved details "
+                 "are right is F1's job.")
     lines += [f"- {c['id']} ({c['name']}): {c['question'].strip()}" for c in criteria]
     return "\n".join(lines)
 
