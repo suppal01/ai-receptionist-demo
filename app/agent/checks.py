@@ -77,7 +77,7 @@ _PRICE_QUESTION = re.compile(
     # "how much for whitening"), not by a noun ("how much notice", "how much time").
     r"\bhow much (?:is|are|was|does|do|did|would|will|should|can|could|for|it|that|this|i|we)\b"
     r"|\b(costs?|costing|prices?|pricing|fees?|co-?pays?|out[- ]of[- ]pocket"
-    r"|charges?|expensive|afford)\b",
+    r"|charges?|expensive|afford|ballpark|estimates?)\b",
     re.IGNORECASE,
 )
 

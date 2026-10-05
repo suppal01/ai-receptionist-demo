@@ -64,6 +64,13 @@ def test_keyword_match_escalates_without_asking_the_classifier():
     assert classifier.calls == []
 
 
+def test_classifier_prompt_says_routine_dental_problems_are_not_emergencies():
+    # rc-003: "I have a loose filling" was flagged as a dental emergency.
+    from app.guardrail.classifier import SYSTEM
+
+    assert "loose or lost filling" in SYSTEM
+
+
 def test_classifier_prompt_includes_recent_context():
     prompt = build_prompt("it's getting worse", [{"role": "caller", "text": "my cheek is swollen"},
                                                  {"role": "agent", "text": "When did it start?"}])

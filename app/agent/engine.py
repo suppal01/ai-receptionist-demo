@@ -378,9 +378,16 @@ class Engine:
             if name == "callback_number":
                 phone = normalize_phone(value)
                 if phone is None:
-                    invalid_phone = True
-                    events.append(_check("callback_number", [f"not a 10-digit number: {value!r}"]))
-                    continue
+                    # A number given in pieces ("503 555..." then "0167", rc-003): join them.
+                    digits = re.sub(r"\D", "", value)
+                    phone = normalize_phone(call.fields.get(PARTIAL_PHONE, "") + digits)
+                    if phone is None:
+                        if 0 < len(digits) < 10:
+                            call.fields[PARTIAL_PHONE] = (call.fields.get(PARTIAL_PHONE, "") + digits)[-9:]
+                        invalid_phone = True
+                        events.append(_check("callback_number", [f"not a 10-digit number: {value!r}"]))
+                        continue
+                call.fields.pop(PARTIAL_PHONE, None)
                 value = phone
             if call.fields.get(name) != value:
                 call.fields[name] = value
@@ -406,7 +413,8 @@ class Engine:
         )
 
     def _save(self, call: CallState, events: list[Event]) -> str:
-        record = RequestRecord(call_id=call.id, type=call.request_type, **call.fields)
+        details = {k: v for k, v in call.fields.items() if not k.startswith("_")}
+        record = RequestRecord(call_id=call.id, type=call.request_type, **details)
         self.requests[record.id] = record
         self._new_requests.append(record)
         call.outcome = call.outcome or "request_saved"
@@ -431,6 +439,8 @@ class Engine:
 
 
 PLAIN_ANSWER_FIELDS = ("preferred_times", "insurance_carrier", "reason_for_visit")
+# Digits of a phone number given in pieces, kept until the rest arrives (never saved).
+PARTIAL_PHONE = "_partial_phone"
 
 # A reason made only of these words says nothing about why the caller is coming in
 # ("first visit", "new patient appointment", "son's first visit").

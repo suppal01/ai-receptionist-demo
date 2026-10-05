@@ -309,6 +309,38 @@ def test_yes_with_a_change_is_not_a_plain_confirmation():
     assert engine.requests == {}
 
 
+def test_phone_number_given_in_two_pieces_is_combined():
+    # rc-003 (run-20261005-004323-6076): "503 555..." then "0167" was asked for twice.
+    engine, _ = run(
+        step("request", "provide_info", name="Harold Benson"),
+        step("provide_info", callback_number="503 555"),
+        step("provide_info", callback_number="0167"),
+    )
+    call_id = engine.handle("", "Appointment please, I'm Harold Benson").call_id
+    first = engine.handle(call_id, "It's 503 555...")
+    assert script("invalid_callback") in first.reply
+    second = engine.handle(call_id, "Oh, sorry, 0167.")
+    assert engine.calls[call_id].fields["callback_number"] == "5035550167"
+    assert second.reply.endswith(script("ask_preferred_times"))
+
+
+def test_partial_number_is_never_saved_with_the_request():
+    engine, call_id = collected(step("provide_info", callback_number="555"), step("confirm"))
+    engine.handle(call_id, "add 555")
+    engine.handle(call_id, "yes")
+    [saved] = engine.requests.values()
+    assert saved.callback_number == "5035550147"
+
+
+def test_price_question_still_gets_the_price_decline_when_the_model_fails():
+    # pi-u-012 "Whitening, ballpark, what am I looking at?" timed out on every run.
+    from app.agent.model import Interpretation
+
+    engine, _ = run(([], Interpretation(intents=["other"], error="504 DEADLINE_EXCEEDED")))
+    result = engine.handle("", "Whitening, ballpark, what am I looking at?")
+    assert script("decline_price") in result.reply
+
+
 def test_bracketed_extras_are_removed_from_the_name():
     # rc-013: the model saved "Leo Park (mom: Dana)".
     engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park (mom: Dana)"})))

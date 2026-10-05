@@ -13,7 +13,9 @@ import threading
 from dataclasses import dataclass
 from typing import Protocol
 
-CLASSIFIER_PROMPT_VERSION = "emergency-v1"
+# v2 (2026-10-05): loose or lost fillings and crowns without severe pain aren't emergencies
+# (rc-003 false alarm in run-20261005-004323-6076).
+CLASSIFIER_PROMPT_VERSION = "emergency-v2"
 TIMEOUT_MS = 8_000
 
 SYSTEM = """\
@@ -30,8 +32,9 @@ swollen gum or cheek; a jaw injury.
 
 Not emergencies: things that happened in the past and are resolved; questions about \
 emergency policies or fees; other people's past events; routine sensitivity, small chips, \
-mild bleeding when flossing; children's baby teeth falling out normally; figures of speech \
-("dying to", "killing me" about something else).
+mild bleeding when flossing; a loose or lost filling or crown without severe pain or \
+swelling; children's baby teeth falling out normally; figures of speech ("dying to", \
+"killing me" about something else).
 
 If it is unclear whether something is happening now, treat it as an emergency: missing one \
 is worse than a false alarm. Answer with JSON only."""
