@@ -102,7 +102,11 @@ class Engine:
         else:
             # The classifier reads the message at the same time as the agent's model.
             screening = (
-                _POOL.submit(self.classifier.classify, text, list(call.history)) if self.classifier else None
+                _POOL.submit(
+                    self.classifier.classify, text, list(call.history), call.outcome == "emergency"
+                )
+                if self.classifier
+                else None
             )
             self._agent_turn(call, text, events, parts, screening)
 
@@ -119,7 +123,8 @@ class Engine:
         return TurnResult(call.id, reply, call.stage, events, call.ended)
 
     def _escalate(self, call: CallState, severity: str, source: str, events: list[Event], parts: list[str]):
-        parts.append(script("emergency"))
+        # Medical: call 911. Dental: urgent callback, no 911 guidance (product owner, 2026-10-05).
+        parts.append(script("emergency" if severity == "medical" else "emergency_dental"))
         events.append(
             {"type": "handoff", "payload": {"reason": "emergency", "severity": severity, "source": source}}
         )
@@ -259,8 +264,13 @@ class Engine:
             self._move(call, "close", events)
             return
 
+        if interp.insurance_asked_about and not call.fields.get("insurance_carrier"):
+            call.fields[INSURANCE_ASKED] = interp.insurance_asked_about.strip()
+
         before = dict(call.fields)
         changed, invalid_phone = self._merge(call, interp, events)
+        if not changed and not invalid_phone:
+            changed = self._answer_to_insurance_confirmation(call, text, intents, events)
         if not changed and not invalid_phone and intents <= {"other", "provide_info"}:
             changed = self._take_plain_answer(call, text, events)
         # Contact details mean the caller wants something followed up. Insurance, times or a
@@ -289,7 +299,12 @@ class Engine:
         if invalid_phone:
             parts.append(script("invalid_callback"))
 
-        if call.stage == "confirm":
+        if call.stage == "close" and changed and call.request_type and not self._missing(call):
+            # A change after the save (chat call 4f45a5ed): read it back; confirming updates
+            # the same request.
+            self._move(call, "confirm", events)
+            parts.append(self._read_back(call))
+        elif call.stage == "confirm":
             if changed:
                 parts.append(self._read_back(call))
             elif "confirm" in intents or (
@@ -305,6 +320,8 @@ class Engine:
             missing = self._missing(call)
             if invalid_phone:
                 pass
+            elif missing and missing[0] == "insurance_carrier" and call.fields.get(INSURANCE_ASKED):
+                parts.append(script("confirm_insurance", insurance=call.fields[INSURANCE_ASKED]))
             elif missing:
                 parts.append(script(f"ask_{missing[0]}"))
             else:
@@ -342,6 +359,21 @@ class Engine:
         if banned:
             failures.append(f"banned phrases: {', '.join(banned)}")
         return failures
+
+    def _answer_to_insurance_confirmation(self, call: CallState, text: str, intents: set, events) -> bool:
+        """After "Earlier you asked about X. Is that the plan you have?": yes records X; no drops
+        it so the normal insurance question follows."""
+        asked = call.fields.get(INSURANCE_ASKED)
+        last = next((h["text"] for h in reversed(call.history) if h["role"] == "agent"), "")
+        if not asked or script("confirm_insurance", insurance=asked) not in last:
+            return False
+        if "confirm" in intents or is_plain_yes(text):
+            call.fields["insurance_carrier"] = asked
+            call.fields.pop(INSURANCE_ASKED, None)
+            events.append({"type": "route", "payload": {"reason": "insurance_confirmed"}})
+            return True
+        call.fields.pop(INSURANCE_ASKED, None)
+        return False
 
     def _take_plain_answer(self, call: CallState, text: str, events: list[Event]) -> bool:
         """The caller answered the question just asked, but the model extracted nothing.
@@ -414,7 +446,10 @@ class Engine:
 
     def _save(self, call: CallState, events: list[Event]) -> str:
         details = {k: v for k, v in call.fields.items() if not k.startswith("_")}
-        record = RequestRecord(call_id=call.id, type=call.request_type, **details)
+        # One request per call: saving again after a change updates it instead of duplicating.
+        record = RequestRecord(
+            id=f"req-{call.id.replace('-', '')[:12]}", call_id=call.id, type=call.request_type, **details
+        )
         self.requests[record.id] = record
         self._new_requests.append(record)
         call.outcome = call.outcome or "request_saved"
@@ -441,6 +476,8 @@ class Engine:
 PLAIN_ANSWER_FIELDS = ("preferred_times", "insurance_carrier", "reason_for_visit")
 # Digits of a phone number given in pieces, kept until the rest arrives (never saved).
 PARTIAL_PHONE = "_partial_phone"
+# A plan the caller asked about ("Do you take Patriot?"), to confirm later (never saved).
+INSURANCE_ASKED = "_insurance_asked"
 
 # A reason made only of these words says nothing about why the caller is coming in
 # ("first visit", "new patient appointment", "son's first visit").

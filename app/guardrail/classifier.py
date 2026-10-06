@@ -15,7 +15,10 @@ from typing import Protocol
 
 # v2 (2026-10-05): loose or lost fillings and crowns without severe pain aren't emergencies
 # (rc-003 false alarm in run-20261005-004323-6076).
-CLASSIFIER_PROMPT_VERSION = "emergency-v2"
+# v3 (2026-10-05, product owner approved): mild or unspecified pain with an appointment
+# request and loose dental work aren't emergencies; judge the new message; after emergency
+# instructions were given, flag again only for a new or worse symptom (chat-page testing).
+CLASSIFIER_PROMPT_VERSION = "emergency-v3"
 TIMEOUT_MS = 8_000
 
 SYSTEM = """\
@@ -32,12 +35,16 @@ swollen gum or cheek; a jaw injury.
 
 Not emergencies: things that happened in the past and are resolved; questions about \
 emergency policies or fees; other people's past events; routine sensitivity, small chips, \
-mild bleeding when flossing; a loose or lost filling or crown without severe pain or \
-swelling; children's baby teeth falling out normally; figures of speech ("dying to", \
+mild bleeding when flossing; mild or unspecified pain mentioned while asking for an \
+appointment ("I do have some tooth pain, can I come in tomorrow?"); a loose or lost \
+filling, crown, bracket, attachment, retainer or denture without severe pain, swelling or \
+bleeding; children's baby teeth falling out normally; figures of speech ("dying to", \
 "killing me" about something else).
 
-If it is unclear whether something is happening now, treat it as an emergency: missing one \
-is worse than a false alarm. Answer with JSON only."""
+Judge the NEW message. Earlier messages only help you understand it (for example "it's \
+getting worse" refers back to a symptom). If a serious symptom from the lists above may be \
+happening now but the message is unclear, treat it as an emergency: missing one is worse \
+than a false alarm. Answer with JSON only."""
 
 SCHEMA = {
     "type": "object",
@@ -60,14 +67,23 @@ class ClassifierResult:
 class EmergencyClassifier(Protocol):
     name: str
 
-    def classify(self, text: str, history: list[dict[str, str]]) -> ClassifierResult: ...
+    def classify(
+        self, text: str, history: list[dict[str, str]], already_escalated: bool = False
+    ) -> ClassifierResult: ...
 
 
-def build_prompt(text: str, history: list[dict[str, str]]) -> str:
+def build_prompt(text: str, history: list[dict[str, str]], already_escalated: bool = False) -> str:
     recent = "\n".join(
         f"{'Caller' if h['role'] == 'caller' else 'Receptionist'}: {h['text']}" for h in history[-4:]
     )
-    return f"Recent conversation:\n{recent or '(none)'}\n\nNew caller message:\n<<<\n{text}\n>>>"
+    note = (
+        "\nThe receptionist has already given emergency instructions on this call. Flag an "
+        "emergency again only if the new message describes a new or worse serious symptom; "
+        "the caller giving details or saying they don't have those symptoms is not one.\n"
+        if already_escalated
+        else ""
+    )
+    return f"Recent conversation:\n{recent or '(none)'}\n{note}\nNew caller message:\n<<<\n{text}\n>>>"
 
 
 class GeminiEmergencyClassifier:
@@ -97,12 +113,14 @@ class GeminiEmergencyClassifier:
         except Exception:
             pass
 
-    def classify(self, text: str, history: list[dict[str, str]]) -> ClassifierResult:
+    def classify(
+        self, text: str, history: list[dict[str, str]], already_escalated: bool = False
+    ) -> ClassifierResult:
         from google.genai import types
 
         resp = self.client.models.generate_content(
             model=self.name,
-            contents=build_prompt(text, history),
+            contents=build_prompt(text, history, already_escalated),
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM,
                 temperature=0,

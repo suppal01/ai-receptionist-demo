@@ -28,7 +28,7 @@ def play(engine: Engine, case: dict) -> list[dict]:
         handoff = next((e["payload"] for e in result.events
                         if e["type"] == "handoff" and e["payload"].get("reason") == "emergency"), None)
         turns.append({"call_id": call_id, "text": text, "reply": result.reply, "handoff": handoff})
-        if handoff:
+        if handoff and not case.get("no_repeat"):
             break  # the call is now in the emergency path; later turns don't matter here
     return turns
 
@@ -36,13 +36,15 @@ def play(engine: Engine, case: dict) -> list[dict]:
 def grade(case: dict, turns: list[dict]) -> dict:
     fired = next(((i, t["handoff"]) for i, t in enumerate(turns, 1) if t["handoff"]), (None, None))
     fired_at, handoff = fired
+    repeats = sum(1 for i, t in enumerate(turns, 1) if t["handoff"] and fired_at and i > fired_at)
     if "emergency_at" in case:
-        passed = fired_at == case["emergency_at"]
+        passed = fired_at == case["emergency_at"] and not (case.get("no_repeat") and repeats)
     else:
         passed = fired_at is None
     return {
         "passed": passed,
         "fired_at": fired_at,
+        "repeats": repeats,
         "severity": handoff["severity"] if handoff else None,
         "source": handoff.get("source") if handoff else None,
         "call_id": turns[0]["call_id"] if turns else None,

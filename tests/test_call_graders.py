@@ -92,3 +92,9 @@ def test_expected_script_and_citation_are_found():
     t.insert(2, agent(script("decline_price"), cite))
     checks = call_checks(case, t, [saved()])
     assert checks["uses_script"]["passed"] and checks["answers_side_question"]["passed"]
+
+
+def test_single_request_check():
+    case = CASE | {"expected": CASE["expected"] | {"single_request": True}}
+    assert call_checks(case, good_transcript(), [saved()])["single_request"]["passed"] is True
+    assert call_checks(case, good_transcript(), [saved(), saved()])["single_request"]["passed"] is False

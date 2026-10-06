@@ -93,6 +93,20 @@ emergency: >-
   dental problem, I'm flagging this for our team right away. Please tell me your name and
   the best number to reach you.
 
+# Urgent dental problem (no 911 guidance): used when the guardrail's severity is "dental".
+# Added and approved by the product owner on 2026-10-05 after chat-page testing ("loose
+# crown" and "some tooth pain" callers heard the 911 message). `emergency` above stays for
+# severity "medical".
+emergency_dental: >-
+  That sounds like it needs prompt attention. I'm flagging this as urgent for our team so
+  they can call you back as soon as possible. May I have your name and the best number to
+  reach you?
+
+# Confirming insurance the caller asked about earlier, instead of asking from scratch.
+# Added 2026-10-05 (product owner approved the behavior, option D); wording pending review.
+confirm_insurance: >-
+  Earlier you asked about {insurance}. Is that the plan you have?
+
 # Phrases that must never appear in an agent reply (checked by tests and graders).
 # The bare word "booked" is allowed only in "not a booked appointment".
 banned_phrases:

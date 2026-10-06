@@ -8,7 +8,9 @@ from app.agent.model import TurnContext
 # v2 (2026-10-03): no added descriptive words; keep every relevant fact and condition; use
 # every relevant entry. Fixes judge findings on run-20261003-141534-3406 (pi-a-016
 # "comprehensive", pi-a-035 dropped follow-up fact, pi-a-028 wrong entry).
-PROMPT_VERSION = "np-agent-v2"
+# v3 (2026-10-05): insurance_asked_about, so the engine can confirm a plan the caller asked
+# about instead of asking from scratch (product owner option D).
+PROMPT_VERSION = "np-agent-v3"
 
 SYSTEM = """\
 You interpret caller messages for Sparkle Dental's text receptionist. Software around you \
@@ -61,6 +63,10 @@ fields (only details the caller states in this message; never guess):
 - insurance_carrier: carrier and plan as said, or "none" if they have no insurance.
 - reason_for_visit: short, as said.
 - For a correction, put the corrected value in its field.
+
+insurance_asked_about: if the caller asks whether a specific insurance plan is accepted \
+("Do you take Patriot?"), that plan's name. It is not their insurance_carrier unless they \
+say it is theirs.
 """
 
 HISTORY_TURNS = 6

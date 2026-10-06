@@ -3,7 +3,7 @@
 from app.agent.model import Interpretation, RequestFields
 
 
-def step(*intents, search=(), draft="", cited=(), **fields):
+def step(*intents, search=(), draft="", cited=(), asked_insurance=None, **fields):
     """One scripted model turn: searches to run, then the interpretation to return."""
     return (
         list(search),
@@ -12,6 +12,7 @@ def step(*intents, search=(), draft="", cited=(), **fields):
             fields=RequestFields(**fields),
             draft_reply=draft,
             cited_ids=list(cited),
+            insurance_asked_about=asked_insurance,
         ),
     )
 

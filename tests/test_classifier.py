@@ -10,10 +10,11 @@ class FakeClassifier:
     name = "fake-classifier"
 
     def __init__(self, result=None, error=None):
-        self.result, self.error, self.calls = result, error, []
+        self.result, self.error, self.calls, self.already_escalated = result, error, [], []
 
-    def classify(self, text, history):
+    def classify(self, text, history, already_escalated=False):
         self.calls.append(text)
+        self.already_escalated.append(already_escalated)
         if self.error:
             raise self.error
         return self.result
@@ -69,6 +70,40 @@ def test_classifier_prompt_says_routine_dental_problems_are_not_emergencies():
     from app.guardrail.classifier import SYSTEM
 
     assert "loose or lost filling" in SYSTEM
+
+
+def test_dental_severity_gets_the_dental_script_without_911():
+    # Chat testing 2026-10-05: a loose-crown caller kept hearing the 911 message.
+    dental = ClassifierResult(emergency=True, severity="dental", reason="knocked-out tooth")
+    engine = Engine(FakeModel([step("other")]), classifier=FakeClassifier(dental))
+    result = engine.handle("", "my kid's tooth came out in a fall")
+    assert script("emergency_dental") in result.reply
+    assert "911" not in result.reply
+
+
+def test_medical_severity_keeps_the_911_script():
+    engine = Engine(FakeModel([]))
+    result = engine.handle("", "I can't breathe and my face is swollen")
+    assert script("emergency") in result.reply
+
+
+def test_classifier_is_told_when_emergency_instructions_were_already_given():
+    # Chat call 909c4f49: after "I don't have any trouble as you described", giving a phone
+    # number re-triggered the classifier on pain mentioned two turns earlier.
+    classifier = FakeClassifier(ROUTINE)
+    engine = Engine(FakeModel([step("provide_info", name="Lakshmi")]), classifier=classifier)
+    call_id = engine.handle("", "I knocked out a tooth").call_id      # keywords escalate
+    engine.handle(call_id, "my name is Lakshmi, no breathing trouble")
+    assert classifier.already_escalated == [True]
+
+
+def test_classifier_prompt_v3_rules():
+    from app.guardrail.classifier import SYSTEM, build_prompt
+
+    assert "some tooth pain" in SYSTEM or "mild or unspecified" in SYSTEM
+    assert "attachment" in SYSTEM
+    assert "new or worse" in build_prompt("hi", [], already_escalated=True)
+    assert "new or worse" not in build_prompt("hi", [], already_escalated=False)
 
 
 def test_classifier_prompt_includes_recent_context():

@@ -207,7 +207,13 @@ class PostgresStore:
                     cur.executemany(
                         "insert into requests (id, call_id, type, name, callback_number,"
                         " preferred_times, insurance_carrier, reason_for_visit, status, created_at)"
-                        " values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        " values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                        # A change after the save updates the call's request; staff status is kept.
+                        " on conflict (id) do update set type = excluded.type, name = excluded.name,"
+                        " callback_number = excluded.callback_number,"
+                        " preferred_times = excluded.preferred_times,"
+                        " insurance_carrier = excluded.insurance_carrier,"
+                        " reason_for_visit = excluded.reason_for_visit",
                         [
                             (r.id, r.call_id, r.type, r.name, r.callback_number, r.preferred_times,
                              r.insurance_carrier, r.reason_for_visit, r.status, r.created_at)

@@ -101,6 +101,8 @@ def call_checks(case: dict, transcript: list[dict], saved: list) -> dict[str, di
             and any(spoken in t["text"] for i, t in agent if i < save_at),
             "the saved number was read back before the save",
         )
+    if exp.get("single_request"):
+        checks["single_request"] = _check(len(saved) == 1, f"{len(saved)} requests saved for the call")
     if "never_reasks" in exp:
         asked = [f for f in exp["never_reasks"] if any(script(FIELD_ASKS[f]) in r for r in replies)]
         checks["never_reasks"] = _check(not asked, "asked for: " + ", ".join(asked))

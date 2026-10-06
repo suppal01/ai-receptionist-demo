@@ -112,3 +112,19 @@ def test_feedback_is_stored_against_the_reply(store):
         reply, expected, status = conn.execute(
             "select reply, expected, status from feedback where id = %s", (fid,)).fetchone()
     assert reply.endswith("May I have your full name?") and expected == "Ask for my name first" and status == "new"
+
+
+def test_change_after_save_updates_the_stored_request(store):
+    from app.agent.engine import Engine
+    from tests.fakes import FakeModel, step
+
+    fields = dict(name="Lakshmi Uppala", callback_number="503 555 0101", preferred_times="Saturday mornings",
+                  insurance_carrier="none", reason_for_visit="dentures")
+    engine = Engine(FakeModel([step("request", "provide_info", **fields), step("confirm"),
+                               step("correction", preferred_times="Monday evenings"), step("confirm")]), store=store)
+    call_id = engine.handle("", "everything").call_id
+    for text in ("yes", "Monday evenings instead", "yes"):
+        engine.handle(call_id, text)
+    with store.pool.connection() as conn:
+        rows = conn.execute("select preferred_times from requests where call_id = %s", (call_id,)).fetchall()
+    assert rows == [("Monday evenings",)]

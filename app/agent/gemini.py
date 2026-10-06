@@ -51,6 +51,7 @@ SUBMIT = types.FunctionDeclaration(
             },
             "draft_reply": {"type": "string"},
             "cited_ids": {"type": "array", "items": {"type": "string"}},
+            "insurance_asked_about": {"type": "string"},
         },
         "required": ["intents"],
     },

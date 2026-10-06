@@ -341,6 +341,59 @@ def test_price_question_still_gets_the_price_decline_when_the_model_fails():
     assert script("decline_price") in result.reply
 
 
+def test_change_after_the_save_is_read_back_and_updates_the_same_request():
+    # Chat call 4f45a5ed, turn 12: "actually can I get a monday or friday evening instead?"
+    # after the save got the generic "What would you like to do?".
+    engine, call_id = collected(
+        step("confirm"),
+        step("correction", preferred_times="Monday or Friday evenings"),
+        step("confirm"),
+    )
+    engine.handle(call_id, "Yes")
+    [first] = engine.requests.values()
+    change = engine.handle(call_id, "actually can I get a monday or friday evening instead?")
+    assert change.stage == "confirm"
+    assert "preferred times Monday or Friday evenings" in change.reply
+    done = engine.handle(call_id, "yes")
+    assert done.stage == "close"
+    [updated] = engine.requests.values()
+    assert updated.id == first.id
+    assert updated.preferred_times == "Monday or Friday evenings"
+
+
+def test_insurance_the_caller_asked_about_is_confirmed_not_asked_from_scratch():
+    # Chat call 4f45a5ed: "Do you take patriot insurance?" then later "yes, as I mentioned
+    # before I have patriot insurance" (product owner option D).
+    engine, _ = run(
+        step("question", search=["insurance"], cited=["kb-insurance-002"],
+             draft="For other PPO dental plans, Sparkle Dental is out of network.",
+             asked_insurance="Patriot insurance"),
+        step("request", "provide_info", name="Lakshmi Uppala", callback_number=PHONE,
+             preferred_times="Thursday mornings"),
+        step("other"),
+    )
+    call_id = engine.handle("", "Do you take patriot insurance?").call_id
+    ask = engine.handle(call_id, "Book me: Lakshmi Uppala, 503 555 0147, Thursday mornings")
+    assert ask.reply.endswith(script("confirm_insurance", insurance="Patriot insurance"))
+    yes = engine.handle(call_id, "yes")
+    assert engine.calls[call_id].fields["insurance_carrier"] == "Patriot insurance"
+    assert yes.reply.endswith(script("ask_reason_for_visit"))
+
+
+def test_saying_no_to_the_insurance_confirmation_asks_normally():
+    engine, _ = run(
+        step("question", search=["insurance"], cited=["kb-insurance-001"],
+             draft="Sparkle Dental is in network with Delta Dental PPO.", asked_insurance="Delta Dental PPO"),
+        step("request", "provide_info", name="Sam Lee", callback_number=PHONE, preferred_times="mornings"),
+        step("deny"),
+    )
+    call_id = engine.handle("", "Do you take Delta Dental?").call_id
+    engine.handle(call_id, "Sam Lee, 503 555 0147, mornings, appointment please")
+    no = engine.handle(call_id, "no, that was for my wife")
+    assert "insurance_carrier" not in engine.calls[call_id].fields
+    assert no.reply.endswith(script("ask_insurance_carrier"))
+
+
 def test_bracketed_extras_are_removed_from_the_name():
     # rc-013: the model saved "Leo Park (mom: Dana)".
     engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park (mom: Dana)"})))

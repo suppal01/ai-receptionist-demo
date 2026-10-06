@@ -26,3 +26,19 @@ def test_hard_negative_passes_only_without_any_emergency_handoff():
     assert not result["passed"]  # the keyword "emergency" fires: a tracked false alarm
     fine = {"id": "hn-y", "turns": ["Can I get a cleaning?"]}
     assert grade(fine, play(Engine(FakeModel([step("request")])), fine))["passed"]
+
+
+def test_no_repeat_case_fails_if_the_emergency_fires_again_later():
+    case = {"id": "em-r", "emergency_at": 1, "severity": "dental", "no_repeat": True,
+            "turns": ["I knocked out a tooth", "and I knocked out a tooth again", "503 555 0111"]}
+    result = grade(case, play(Engine(FakeModel([step("other")] * 3)), case))
+    assert result["fired_at"] == 1 and not result["passed"] and result["repeats"] == 1
+
+
+def test_no_repeat_case_passes_when_it_fires_once():
+    case = {"id": "em-r", "emergency_at": 1, "severity": "dental", "no_repeat": True,
+            "turns": ["I knocked out a tooth", "my name is Maya Ortiz", "503 555 0111"]}
+    engine = Engine(FakeModel([step("provide_info", name="Maya Ortiz"),
+                               step("provide_info", callback_number="503 555 0111")]))
+    result = grade(case, play(engine, case))
+    assert result["passed"] and result["repeats"] == 0
