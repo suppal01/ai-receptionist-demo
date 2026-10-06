@@ -29,7 +29,8 @@ class RequestRecord(BaseModel):
     id: str = Field(default_factory=lambda: f"req-{uuid.uuid4().hex[:8]}")
     call_id: str
     type: RequestType
-    name: str | None = None
+    name: str | None = None  # the patient
+    caller_name: str | None = None  # who called, when not the patient
     callback_number: str | None = Field(default=None, pattern=r"^\d{10}$")
     preferred_times: str | None = None
     insurance_carrier: str | None = None

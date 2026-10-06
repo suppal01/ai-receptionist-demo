@@ -103,7 +103,7 @@ emergency_dental: >-
   reach you?
 
 # Confirming insurance the caller asked about earlier, instead of asking from scratch.
-# Added 2026-10-05 (product owner approved the behavior, option D); wording pending review.
+# Added 2026-10-05 (product owner option D); wording approved by the product owner 2026-10-06.
 confirm_insurance: >-
   Earlier you asked about {insurance}. Is that the plan you have?
 

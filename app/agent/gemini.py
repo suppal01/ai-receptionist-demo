@@ -14,7 +14,7 @@ from google import genai
 from google.genai import types
 from pydantic import ValidationError
 
-from app.agent.model import FIELD_ORDER, Interpretation, SearchFn, TurnContext
+from app.agent.model import FIELD_ORDER, OPTIONAL_FIELDS, Interpretation, SearchFn, TurnContext
 from app.agent.prompts import SYSTEM, turn_prompt
 
 MAX_SEARCHES = 2
@@ -47,7 +47,7 @@ SUBMIT = types.FunctionDeclaration(
             "intents": {"type": "array", "items": {"type": "string", "enum": _INTENTS}},
             "fields": {
                 "type": "object",
-                "properties": {name: {"type": "string"} for name in FIELD_ORDER},
+                "properties": {name: {"type": "string"} for name in FIELD_ORDER + OPTIONAL_FIELDS},
             },
             "draft_reply": {"type": "string"},
             "cited_ids": {"type": "array", "items": {"type": "string"}},

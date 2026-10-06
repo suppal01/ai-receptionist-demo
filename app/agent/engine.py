@@ -29,7 +29,7 @@ from app.agent.checks import (
     speak_digits,
     unsupported_specifics,
 )
-from app.agent.model import FIELD_ORDER, AgentModel, Interpretation, TurnContext
+from app.agent.model import FIELD_ORDER, OPTIONAL_FIELDS, AgentModel, Interpretation, TurnContext
 from app.agent.prompts import PROMPT_VERSION
 from app.agent.request_store import REQUIRED_FIELDS, RequestRecord
 from app.agent.scripts import script
@@ -408,11 +408,11 @@ class Engine:
     ) -> tuple[bool, bool]:
         """Store valid fields the caller gave. Returns (anything changed, phone was invalid)."""
         changed = invalid_phone = False
-        for name in FIELD_ORDER:
+        for name in FIELD_ORDER + OPTIONAL_FIELDS:
             value = (getattr(interp.fields, name) or "").strip()
             if not value:
                 continue
-            if name == "name":
+            if name in ("name", "caller_name"):
                 # Asides belong in the transcript, not the name ("Leo Park (mom: Dana)",
                 # "Leo Park, and I'm his mom, Dana": rc-013).
                 value = re.sub(r"\s*\([^)]*\)", "", value).split(",")[0].strip()
@@ -482,7 +482,8 @@ class Engine:
         self._move(call, "close", events)
         return script(
             "close_request_saved",
-            first_name=record.name.split()[0],
+            # Thank the person on the line: the parent, not the child (rc-013).
+            first_name=(record.caller_name or record.name).split()[0],
             digits_spoken=speak_digits(record.callback_number),
         )
 

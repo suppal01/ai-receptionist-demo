@@ -10,7 +10,8 @@ from app.agent.model import TurnContext
 # "comprehensive", pi-a-035 dropped follow-up fact, pi-a-028 wrong entry).
 # v3 (2026-10-05): insurance_asked_about, so the engine can confirm a plan the caller asked
 # about instead of asking from scratch (product owner option D).
-PROMPT_VERSION = "np-agent-v3"
+# v4 (2026-10-06): caller_name for someone calling on another person's behalf (rc-013).
+PROMPT_VERSION = "np-agent-v4"
 
 SYSTEM = """\
 You interpret caller messages for Sparkle Dental's text receptionist. Software around you \
@@ -58,7 +59,9 @@ booked, scheduled, or confirmed.
 - cited_ids: the IDs of the entries the draft uses.
 
 fields (only details the caller states in this message; never guess):
-- name: as said. callback_number: the digits as said.
+- name: the patient's name, as said. If the caller is calling for someone else (a child, a
+  parent), name is that person's and caller_name is the caller's own name (only then).
+- callback_number: the digits as said.
 - preferred_times: as said, e.g. "weekday mornings".
 - insurance_carrier: carrier and plan as said, or "none" if they have no insurance.
 - reason_for_visit: short, as said.

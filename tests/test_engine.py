@@ -434,6 +434,26 @@ def test_name_stops_at_a_comma_aside():
     assert engine.calls[result.call_id].fields["name"] == "Leo Park"
 
 
+def test_parent_calling_for_a_child_is_thanked_by_their_own_name():
+    # rc-013: "Thank you, Leo" was said to Dana, the parent (caller_name approved 2026-10-06).
+    engine, call_id = collected(step("confirm"))
+    engine.calls[call_id].fields["caller_name"] = "Dana Park"
+    engine.calls[call_id].fields["name"] = "Leo Park"
+    engine.store.states[call_id] = engine.calls[call_id]
+    result = engine.handle(call_id, "yes")
+    assert result.reply.startswith("Thank you, Dana.")
+    [saved] = engine.requests.values()
+    assert saved.name == "Leo Park" and saved.caller_name == "Dana Park"
+
+
+def test_caller_name_is_extracted_and_optional():
+    engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park", "caller_name": "Dana Park"})))
+    result = engine.handle("", "everything for my son Leo; I'm Dana")
+    fields = engine.calls[result.call_id].fields
+    assert fields["caller_name"] == "Dana Park" and fields["name"] == "Leo Park"
+    assert result.stage == "confirm"  # caller_name is never required
+
+
 def test_bracketed_extras_are_removed_from_the_name():
     # rc-013: the model saved "Leo Park (mom: Dana)".
     engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park (mom: Dana)"})))

@@ -39,12 +39,17 @@ FIELD_ORDER = (
     "insurance_carrier",
     "reason_for_visit",
 )
+# Recorded when given, never asked for or required.
+OPTIONAL_FIELDS = ("caller_name",)
 
 
 class RequestFields(BaseModel):
     """Request details found in this message only. Omitted fields were not mentioned."""
 
-    name: str | None = None
+    name: str | None = Field(default=None, description="The patient's name.")
+    caller_name: str | None = Field(
+        default=None, description="The caller's own name, only when calling for someone else."
+    )
     callback_number: str | None = None
     preferred_times: str | None = None
     insurance_carrier: str | None = Field(
