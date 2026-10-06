@@ -97,3 +97,18 @@ def test_full_call_is_stored_and_reloadable(store):
     assert [t[1] for t in turns] == ["caller", "agent"] * 3
     assert event_types.count("guardrail") == 3
     assert request == ("new_patient", "5035550147", "new")
+
+
+def test_feedback_is_stored_against_the_reply(store):
+    from app.agent.engine import Engine
+    from tests.fakes import FakeModel, step
+
+    engine = Engine(FakeModel([step("request")]), store=store)
+    call_id = engine.handle("", "I'd like an appointment").call_id
+    fid = store.add_feedback(call_id, 1, "Ask for my name first")
+    assert fid is not None
+    assert store.add_feedback(call_id, 2, "no such reply") is None
+    with store.pool.connection() as conn:
+        reply, expected, status = conn.execute(
+            "select reply, expected, status from feedback where id = %s", (fid,)).fetchone()
+    assert reply.endswith("May I have your full name?") and expected == "Ask for my name first" and status == "new"

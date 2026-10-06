@@ -50,13 +50,23 @@
   .chip { font: 0.75rem var(--mono); background: var(--chip); border-radius: 4px; padding: 1px 6px; }
   .chip.bad { color: var(--fail); } .chip.good { color: var(--pass); } .chip.warn { color: var(--warn); }
   .empty { color: var(--muted); font-size: 0.9rem; }
+  .flag { align-self: flex-start; display: grid; gap: 6px; max-width: 85%; margin-top: -4px; }
+  .flag-link { background: none; border: 0; padding: 0; color: var(--muted); font-size: 0.78rem;
+               text-decoration: underline; cursor: pointer; justify-self: start; }
+  .flag-link:hover { color: var(--accent); }
+  .flag textarea { font: inherit; font-size: 0.88rem; padding: 6px 8px; border: 1px solid var(--line);
+                   border-radius: 6px; background: var(--card); color: var(--ink); min-height: 3.2em; resize: vertical; }
+  .flag .row { display: flex; gap: 6px; }
+  .flag .row button { padding: 4px 12px; font-size: 0.85rem; }
+  .flag .done { font-size: 0.8rem; color: var(--pass); }
+  .flag .err { font-size: 0.8rem; color: var(--fail); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Sparkle Dental · test call</h1>
-    <span class="muted">Type as the caller. Synthetic data only: use made-up names and 555-01xx numbers.</span>
+    <span class="muted">Type as the caller. Synthetic data only: use made-up names and 555-01xx numbers. Use "Flag" under a reply to note what you expected instead.</span>
     <span class="muted" id="callinfo"></span>
   </header>
 
@@ -100,6 +110,52 @@
     log.scrollTop = log.scrollHeight;
   }
   function chip(text, kind) { return el("span", "chip" + (kind ? " " + kind : ""), text); }
+
+  // "Flag" under a receptionist reply: the tester says what they expected instead.
+  function addFlag(forCall, turn) {
+    const box = el("div", "flag");
+    const link = el("button", "flag-link", "Flag this reply");
+    link.type = "button";
+    box.append(link);
+    link.addEventListener("click", () => {
+      link.hidden = true;
+      const id = "flag-" + forCall.slice(0, 8) + "-" + turn;
+      const label = el("label", "muted", "What did you expect instead?");
+      label.htmlFor = id;
+      label.style.fontSize = "0.8rem";
+      const note = el("textarea");
+      note.id = id;
+      const save = el("button", null, "Save flag");
+      const cancel = el("button", "secondary", "Cancel");
+      save.type = cancel.type = "button";
+      const status = el("span");
+      const row = el("div", "row");
+      row.append(save, cancel);
+      box.append(label, note, row, status);
+      note.focus();
+      cancel.addEventListener("click", () => { box.replaceChildren(link); link.hidden = false; });
+      save.addEventListener("click", async () => {
+        const expected = note.value.trim();
+        if (!expected) { status.className = "err"; status.textContent = "Write what you expected first."; return; }
+        save.disabled = true;
+        try {
+          const resp = await fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ call_id: forCall, turn, expected }),
+          });
+          if (!resp.ok) throw new Error("the server answered " + resp.status);
+          box.replaceChildren(el("span", "done", "Flagged: " + expected));
+        } catch (e) {
+          status.className = "err";
+          status.textContent = "Couldn't save the flag (" + e.message + "). Try again.";
+          save.disabled = false;
+        }
+      });
+    });
+    log.append(box);
+    log.scrollTop = log.scrollHeight;
+  }
 
   function addTurn(data) {
     if (turns.querySelector(".empty")) turns.replaceChildren();
@@ -145,6 +201,7 @@
       info.textContent = "Call " + callId.slice(0, 8);
       addMsg("agent", data.reply);
       addTurn(data);
+      addFlag(callId, turnNo);
       if (data.ended) { input.placeholder = "Call ended. Start a new call to continue."; }
     } catch (e) {
       addMsg("agent", "Couldn't reach the receptionist: " + e.message + ". Try again.");

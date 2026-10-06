@@ -19,6 +19,14 @@ class TurnRequest(BaseModel):
     )
 
 
+class FeedbackRequest(BaseModel):
+    """A tester's flag on one receptionist reply."""
+
+    call_id: str = Field(min_length=1, max_length=100)
+    turn: int = Field(ge=1, description="1 = the receptionist's first reply in the call.")
+    expected: str = Field(min_length=1, max_length=2000, description="What the tester expected instead.")
+
+
 class TurnResponse(BaseModel):
     """One agent reply, plus a record of what happened during the turn."""
 

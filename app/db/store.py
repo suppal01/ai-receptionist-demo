@@ -41,6 +41,17 @@ class MemoryStore:
         self.requests: dict[str, RequestRecord] = {}
         self.outcomes: dict[str, str | None] = {}
         self.sources: dict[str, str] = {}
+        self.feedback: list[dict] = []
+
+    def add_feedback(self, call_id: str, turn: int, expected: str) -> int | None:
+        """Flag the receptionist's `turn`-th reply. None if the call or reply doesn't exist."""
+        agent = [t for t in self.turns.get(call_id, []) if t["role"] == "agent"]
+        if not 1 <= turn <= len(agent):
+            return None
+        fid = len(self.feedback) + 1
+        self.feedback.append({"id": fid, "call_id": call_id, "turn": turn, "reply": agent[turn - 1]["text"],
+                              "expected": expected, "status": "new"})
+        return fid
 
     def load_call(self, call_id):
         state = self.states.get(call_id)
@@ -133,6 +144,19 @@ class PostgresStore:
             id=call_id, stage=stage, request_type=request_type, fields=dict(fields or {}),
             history=history, ended=ended, outcome=outcome,
         )
+
+    def add_feedback(self, call_id: str, turn: int, expected: str) -> int | None:
+        with self.pool.connection() as conn:
+            row = conn.execute(
+                "select text from turns where call_id = %s and role = 'agent' order by seq offset %s limit 1",
+                (call_id, turn - 1),
+            ).fetchone() if turn >= 1 else None
+            if row is None:
+                return None
+            return conn.execute(
+                "insert into feedback (call_id, turn, reply, expected) values (%s, %s, %s, %s) returning id",
+                (call_id, turn, row[0], expected),
+            ).fetchone()[0]
 
     def record_turn(
         self, call, caller_text, reply, events, new_requests, agent_model, prompt_version, source="api"

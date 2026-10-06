@@ -3,12 +3,12 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
 from app.agent.engine import Engine
 from app.agent.model import model_from_env
-from app.api.schemas import TurnRequest, TurnResponse
+from app.api.schemas import FeedbackRequest, TurnRequest, TurnResponse
 from app.db.store import store_from_env
 from app.guardrail.classifier import classifier_from_env
 
@@ -28,6 +28,15 @@ CHAT_PAGE = Path(__file__).resolve().parents[1] / "templates" / "chat.html"
 def chat() -> HTMLResponse:
     """A browser test call: type as the caller, see each turn's stage, citations and checks."""
     return HTMLResponse(CHAT_PAGE.read_text(encoding="utf-8"))
+
+
+@router.post("/api/feedback", status_code=201, include_in_schema=False)
+def feedback(req: FeedbackRequest) -> dict[str, int]:
+    """Flag a receptionist reply from the chat page: the reply is stored with the expectation."""
+    fid = engine.store.add_feedback(req.call_id, req.turn, req.expected.strip())
+    if fid is None:
+        raise HTTPException(status_code=404, detail="No such call or reply.")
+    return {"id": fid}
 
 
 @router.get("/health")
