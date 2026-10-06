@@ -454,6 +454,44 @@ def test_caller_name_is_extracted_and_optional():
     assert result.stage == "confirm"  # caller_name is never required
 
 
+def _asked_insurance(*later):
+    """A call where the agent has just asked about insurance (name, number, times given)."""
+    engine, _ = run(step("request", "provide_info", name="Tom Becker", callback_number="971 555 0150",
+                         preferred_times="Thursday afternoons"), *later)
+    call_id = engine.handle("", "Tom Becker, 971 555 0150, Thursday afternoons, first visit").call_id
+    assert engine.calls[call_id].history[-1]["text"].endswith(script("ask_insurance_carrier"))
+    return engine, call_id
+
+
+def test_no_insurance_survives_a_model_failure_with_a_price_question():
+    # rc-008 (run-20261006-045449-ff89): the model timed out on "No, I don't have any dental
+    # insurance. How much does whitening cost?" and the agent asked about insurance again.
+    from app.agent.model import Interpretation
+
+    engine, call_id = _asked_insurance(([], Interpretation(intents=["other"], error="504 DEADLINE_EXCEEDED")))
+    result = engine.handle(call_id, "No, I don't have any dental insurance. How much does whitening cost?")
+    assert engine.calls[call_id].fields["insurance_carrier"] == "none"
+    assert script("decline_price") in result.reply
+    assert result.reply.endswith(script("ask_reason_for_visit"))
+
+
+@pytest.mark.parametrize("said", ["No, I don't have insurance.", "I'm uninsured", "I'll be self-pay", "no insurance"])
+def test_no_insurance_answers_are_recorded_as_none(said):
+    engine, call_id = _asked_insurance(step("other"))
+    engine.handle(call_id, said)
+    assert engine.calls[call_id].fields["insurance_carrier"] == "none"
+
+
+def test_plain_answer_keeps_the_statement_and_drops_the_question():
+    from app.agent.model import Interpretation
+
+    engine, _ = run(step("request", "provide_info", name="Sam Lee", callback_number=PHONE),
+                    ([], Interpretation(intents=["other"], error="504 DEADLINE_EXCEEDED")))
+    call_id = engine.handle("", "Sam Lee, 503 555 0147, appointment please").call_id
+    engine.handle(call_id, "Thursday afternoons. Is there parking?")
+    assert engine.calls[call_id].fields["preferred_times"] == "Thursday afternoons."
+
+
 def test_bracketed_extras_are_removed_from_the_name():
     # rc-013: the model saved "Leo Park (mom: Dana)".
     engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park (mom: Dana)"})))

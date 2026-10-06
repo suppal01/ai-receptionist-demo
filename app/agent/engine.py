@@ -23,6 +23,7 @@ from app.agent.checks import (
     asks_about_price,
     asks_if_booked,
     is_plain_yes,
+    says_no_insurance,
     find_banned,
     mentions_price,
     normalize_phone,
@@ -274,7 +275,10 @@ class Engine:
         changed, invalid_phone = self._merge(call, interp, events, correcting="correction" in intents)
         if not changed and not invalid_phone:
             changed = self._answer_to_insurance_confirmation(call, text, intents, events)
-        if not changed and not invalid_phone and intents <= {"other", "provide_info"}:
+        if not changed and not invalid_phone and not intents & {
+            "confirm", "deny", "correction", "human", "goodbye", "request"
+        }:
+            # Also when the model failed or the caller added a question (rc-008).
             changed = self._take_plain_answer(call, text, events)
         # Contact details mean the caller wants something followed up. Insurance, times or a
         # reason mentioned inside a question are remembered but don't start a request.
@@ -393,11 +397,16 @@ class Engine:
         Never for name or phone, which must come from the model and pass validation.
         """
         last = next((h["text"] for h in reversed(call.history) if h["role"] == "agent"), "")
-        answer = text.strip()
-        if call.stage != "collect" or "?" in answer or not answer or len(answer) > 200:
+        # Keep what the caller stated; a question they added is handled separately
+        # ("Thursday afternoons. Is there parking?" -> "Thursday afternoons.").
+        sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+        answer = " ".join(s for s in sentences if not s.rstrip().endswith("?")).strip()
+        if call.stage != "collect" or not answer or len(answer) > 200:
             return False
         for name in PLAIN_ANSWER_FIELDS:
             if script(f"ask_{name}") in last and not call.fields.get(name):
+                if name == "insurance_carrier" and says_no_insurance(answer):
+                    answer = "none"
                 call.fields[name] = answer
                 events.append({"type": "route", "payload": {"reason": "answer_to_last_question", "field": name}})
                 return True

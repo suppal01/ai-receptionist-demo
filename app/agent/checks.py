@@ -115,6 +115,18 @@ def is_plain_yes(text: str) -> bool:
     return bool(_YES_START.search(t)) and not _NOT_PLAIN.search(t) and len(t) <= 80
 
 
+_NO_INSURANCE = re.compile(
+    r"\b(no|don't have|do not have|dont have|without)( any)?( dental)? insurance\b"
+    r"|\buninsured\b|\bself[- ]pay\b|\bpay(ing)? (in )?cash\b",
+    re.IGNORECASE,
+)
+
+
+def says_no_insurance(text: str) -> bool:
+    """'No, I don't have any dental insurance' / 'uninsured' / 'self-pay' (rc-008)."""
+    return bool(_NO_INSURANCE.search(text.replace("’", "'")))
+
+
 def find_banned(text: str) -> list[str]:
     normalized = text.lower().replace("’", "'")
     return [p for p in banned_phrases() if p.lower() in normalized]
