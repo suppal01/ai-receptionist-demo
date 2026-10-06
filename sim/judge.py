@@ -169,7 +169,9 @@ CALL_CRITERIA = [
      "question": "Does each saved detail listed under 'Saved vs expected' contain the expected "
                  "information? Wording may differ and extra accurate detail is fine ('cleaning appointment, "
                  "new patient' contains 'cleaning'; 'none' and 'no insurance' match). An expected value with "
-                 "'/' or ' or ' lists acceptable alternatives: matching any one of them is enough. Fail only "
+                 "'/' or ' or ' lists acceptable alternatives: matching any one of them is enough. Generic "
+                 "words alone don't matter ('Patriot' matches 'Patriot insurance'; 'whitening' matches "
+                 "'whitening consultation'; 'checkup' matches 'a checkup'). Fail only "
                  "when the expected information is missing or contradicted. Pass if nothing is listed."},
     {"id": "P1", "name": "Efficient",
      "question": "Did the receptionist avoid asking for a detail the caller had already clearly given, and "
@@ -182,7 +184,9 @@ CALL_CRITERIA = [
 # call-judge-v2 (2026-10-05): '/' and 'or' list alternatives in expected values (rc-006,
 # rc-009); a read-back of the caller's details is not an H1 claim (rc-012). Not yet
 # calibrated against human grades.
-CALL_JUDGE_PROMPT_VERSION = "call-judge-v2"
+# call-judge-v3 (2026-10-06): generic words ('insurance', 'consultation') don't count against
+# F1 (rc-008, rc-017 in run-20261006-040138-e879).
+CALL_JUDGE_PROMPT_VERSION = "call-judge-v3"
 
 
 def build_call_prompt(case: dict, transcript: list[dict], saved: list, rubric: list[dict]) -> str:

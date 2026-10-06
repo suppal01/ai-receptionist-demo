@@ -257,7 +257,10 @@ class Engine:
                 }
             )
 
-        if "goodbye" in intents or ("deny" in intents and call.stage in ("open", "answer", "close")):
+        confirming_and_leaving = call.stage == "confirm" and "confirm" in intents
+        if not confirming_and_leaving and (
+            "goodbye" in intents or ("deny" in intents and call.stage in ("open", "answer", "close"))
+        ):
             parts.append(script("close_goodbye"))
             call.ended = True
             call.outcome = call.outcome or "info_only"
@@ -268,7 +271,7 @@ class Engine:
             call.fields[INSURANCE_ASKED] = interp.insurance_asked_about.strip()
 
         before = dict(call.fields)
-        changed, invalid_phone = self._merge(call, interp, events)
+        changed, invalid_phone = self._merge(call, interp, events, correcting="correction" in intents)
         if not changed and not invalid_phone:
             changed = self._answer_to_insurance_confirmation(call, text, intents, events)
         if not changed and not invalid_phone and intents <= {"other", "provide_info"}:
@@ -307,11 +310,19 @@ class Engine:
         elif call.stage == "confirm":
             if changed:
                 parts.append(self._read_back(call))
+            elif invalid_phone or "correction" in intents:
+                # Never save on a turn that corrects something or has a bad number (rc-004).
+                if not invalid_phone:
+                    parts.append(self._read_back(call))
             elif "confirm" in intents or (
                 # Backstop: a bare "yes, that's right" the model mislabeled (rc-010).
                 not intents & {"deny", "correction", "question"} and is_plain_yes(text)
             ):
                 parts.append(self._save(call, events))
+                if "goodbye" in intents:
+                    # "Yes, that's correct. No, that's all, thanks." (rc-016): save, then close.
+                    parts.append(script("close_goodbye"))
+                    call.ended = True
             elif "deny" in intents:
                 parts.append(script("ask_correction"))
             elif not invalid_phone:
@@ -392,7 +403,9 @@ class Engine:
                 return True
         return False
 
-    def _merge(self, call: CallState, interp: Interpretation, events: list[Event]) -> tuple[bool, bool]:
+    def _merge(
+        self, call: CallState, interp: Interpretation, events: list[Event], correcting: bool = False
+    ) -> tuple[bool, bool]:
         """Store valid fields the caller gave. Returns (anything changed, phone was invalid)."""
         changed = invalid_phone = False
         for name in FIELD_ORDER:
@@ -400,8 +413,9 @@ class Engine:
             if not value:
                 continue
             if name == "name":
-                # Asides belong in the transcript, not the name ("Leo Park (mom: Dana)", rc-013).
-                value = re.sub(r"\s*\([^)]*\)", "", value).strip()
+                # Asides belong in the transcript, not the name ("Leo Park (mom: Dana)",
+                # "Leo Park, and I'm his mom, Dana": rc-013).
+                value = re.sub(r"\s*\([^)]*\)", "", value).split(",")[0].strip()
                 if not value:
                     continue
             if name == "reason_for_visit" and _is_generic_reason(value):
@@ -410,9 +424,15 @@ class Engine:
             if name == "callback_number":
                 phone = normalize_phone(value)
                 if phone is None:
-                    # A number given in pieces ("503 555..." then "0167", rc-003): join them.
                     digits = re.sub(r"\D", "", value)
-                    phone = normalize_phone(call.fields.get(PARTIAL_PHONE, "") + digits)
+                    known = call.fields.get("callback_number")
+                    if known and 0 < len(digits) < 10 and correcting:
+                        # A correction of the end of a number we already have ("the last four
+                        # digits are actually 0174", rc-004): replace those digits.
+                        phone = known[: 10 - len(digits)] + digits
+                    else:
+                        # A number given in pieces ("503 555..." then "0167", rc-003): join them.
+                        phone = normalize_phone(call.fields.get(PARTIAL_PHONE, "") + digits)
                     if phone is None:
                         if 0 < len(digits) < 10:
                             call.fields[PARTIAL_PHONE] = (call.fields.get(PARTIAL_PHONE, "") + digits)[-9:]
@@ -485,6 +505,8 @@ _GENERIC_REASON_WORDS = {
     "a", "an", "the", "my", "his", "her", "their", "our", "son's", "daughter's", "child's", "kid's",
     "new", "patient", "first", "initial", "visit", "appointment", "consultation", "consult", "to",
     "come", "in", "become", "get", "started", "start", "for", "be", "seen",
+    # Whose visit it is says nothing about why ("first visit for son", rc-013).
+    "son", "daughter", "child", "kid", "kids", "wife", "husband", "mom", "dad", "family", "me",
 }
 
 

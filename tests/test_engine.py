@@ -394,6 +394,46 @@ def test_saying_no_to_the_insurance_confirmation_asks_normally():
     assert no.reply.endswith(script("ask_insurance_carrier"))
 
 
+def test_last_digits_correction_at_the_read_back_replaces_the_end_of_the_number():
+    # rc-004 (run-20261006-040138-e879): "That's all correct, but the last four digits ... are
+    # actually 0174" saved the OLD number (my partial-number join treated 0174 as a new start).
+    engine, call_id = collected(step("confirm", "correction", callback_number="0174"))
+    result = engine.handle(call_id, "That's all correct, but the last four digits are actually 0174.")
+    assert engine.requests == {}
+    assert engine.calls[call_id].fields["callback_number"] == "5035550174"
+    assert "0 1 7 4" in result.reply and result.stage == "confirm"
+
+
+def test_nothing_is_saved_on_a_turn_with_an_invalid_number():
+    engine, call_id = collected(step("confirm", "provide_info", callback_number="12345678901234"))
+    engine.handle(call_id, "yes but my number is 12345678901234")
+    assert engine.requests == {}
+
+
+def test_confirm_and_goodbye_together_saves_then_says_goodbye():
+    # rc-016: "Yes, that's correct. No, that's all, thanks." ended the call without saving.
+    engine, call_id = collected(step("confirm", "deny", "goodbye"))
+    result = engine.handle(call_id, "Yes, that's correct. No, that's all, thanks.")
+    assert len(engine.requests) == 1
+    assert "not a booked appointment" in result.reply
+    assert result.reply.endswith(script("close_goodbye"))
+    assert result.ended is True
+
+
+def test_reason_about_whose_first_visit_is_still_generic():
+    # rc-013: "first visit for son" was recorded, so the real reason was never asked.
+    engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"reason_for_visit": "first visit for son"})))
+    result = engine.handle("", "everything")
+    assert result.reply.endswith(script("ask_reason_for_visit"))
+
+
+def test_name_stops_at_a_comma_aside():
+    # rc-013: "Leo Park, and I'm his mom, Dana" was saved as the name.
+    engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park, and I'm his mom, Dana"})))
+    result = engine.handle("", "everything")
+    assert engine.calls[result.call_id].fields["name"] == "Leo Park"
+
+
 def test_bracketed_extras_are_removed_from_the_name():
     # rc-013: the model saved "Leo Park (mom: Dana)".
     engine, _ = run(step("request", "provide_info", **(ALL_FIELDS | {"name": "Leo Park (mom: Dana)"})))
