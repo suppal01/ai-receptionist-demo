@@ -3,33 +3,16 @@
 Runs when TEST_DATABASE_URL is set, or DATABASE_URL is in .env; skipped otherwise.
 """
 
-import os
-import uuid
-
 import pytest
-from dotenv import dotenv_values
 
-DATABASE_URL = os.environ.get("TEST_DATABASE_URL") or dotenv_values().get("DATABASE_URL")
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL not set")
+from tests.conftest import TEST_DATABASE_URL
+
+pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="DATABASE_URL not set")
 
 
 @pytest.fixture(scope="module")
-def store():
-    import psycopg
-
-    from app.db.store import PostgresStore
-
-    schema = f"test_{uuid.uuid4().hex[:10]}"
-    with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
-        conn.execute(f'create schema "{schema}"')
-    pg = PostgresStore(DATABASE_URL, schema=schema)
-    pg.migrate()
-    try:
-        yield pg
-    finally:
-        pg.close()
-        with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
-            conn.execute(f'drop schema "{schema}" cascade')
+def store(pg_store):
+    return pg_store
 
 
 def test_migrations_are_recorded_and_rerunning_is_a_no_op(store):

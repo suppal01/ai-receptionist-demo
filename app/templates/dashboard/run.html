@@ -1,0 +1,35 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/macros.html" import targets as show_targets %}
+{% block title %}Run {{ run.id }}{% endblock %}
+{% block body %}
+<div style="display:flex; flex-wrap:wrap; gap:6px 14px; align-items:baseline">
+  <h1>Run <span class="mono">{{ run.id }}</span></h1>
+  <span class="muted">{{ run.test_set | replace('_', ' ') }} v{{ run.test_set_version }} · {{ run.agent_model }} · {{ run.prompt_version }}{% if run.judge_model %} · judge {{ run.judge_model }}{% endif %}</span>
+</div>
+{% if run.notes %}<p class="muted" style="margin:0">{{ run.notes }}</p>{% endif %}
+<section class="card" style="max-width:640px">{{ show_targets(targets) }}</section>
+
+{% set failed = results | rejectattr('passed') | list %}
+<h2>{{ failed | length }} of {{ results | length }} cases did not pass</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Case</th><th>Message</th><th>Reply</th><th>Why</th></tr></thead>
+    <tbody>
+    {% for r in failed %}
+      <tr>
+        <td class="mono">{{ r.case_id }}<br><span class="muted">{{ r.kind | replace('_', ' ') }}</span>{% if r.call_id %}<br><a href="/dashboard/calls/{{ r.call_id }}">call</a>{% endif %}</td>
+        <td style="max-width:30ch">{{ r.question }}</td>
+        <td style="max-width:40ch; white-space:pre-wrap">{{ r.reply[:600] }}</td>
+        <td style="max-width:34ch">
+          {% for k, v in r.rule_fails.items() %}<div><span class="chip bad">rule {{ k }}</span> {{ v }}</div>{% endfor %}
+          {% for k, v in r.judge_fails.items() %}<div><span class="chip bad">judge {{ k }}</span> {{ v }}</div>{% endfor %}
+          {% if not r.rule_fails and not r.judge_fails %}<span class="muted">{{ 'emergency handoff fired' if r.kind == 'hard_negative' else 'see the call' }}</span>{% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="empty">Every case passed.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

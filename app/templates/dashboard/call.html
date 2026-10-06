@@ -1,0 +1,76 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/macros.html" import outcome_chip, status_chip %}
+{% block title %}Call {{ call.id[:8] }}{% endblock %}
+{% block style %}
+  .call { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .call { grid-template-columns: minmax(0, 1fr); } }
+  .turns { display: grid; gap: 10px; }
+  .msg { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); white-space: pre-wrap; max-width: 92%; }
+  .msg.caller { background: var(--caller); border-color: transparent; justify-self: end; }
+  .msg.agent { background: var(--card); }
+  .who { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 2px; }
+  .steps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .steps .chip { font-family: var(--mono); }
+  .flag { margin-top: 6px; padding: 6px 8px; border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 4px; font-size: 0.85rem; }
+  dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 0.9rem; }
+  dt { color: var(--muted); }
+  dd { margin: 0; }
+{% endblock %}
+{% block body %}
+<div style="display:flex; flex-wrap:wrap; gap:6px 14px; align-items:baseline">
+  <h1>Call <span class="mono">{{ call.id[:8] }}</span></h1>
+  {{ outcome_chip(call.outcome) }}
+  <span class="muted">{{ call.started_at.strftime('%b %d %Y, %H:%M') }} UTC · {{ 'chat' if call.source == 'api' else call.source }} · {{ call.agent_model }} · {{ call.prompt_version }}</span>
+</div>
+<div class="call">
+  <section class="turns" aria-label="Transcript">
+    {% for t in turns %}
+      {% if t.role == 'caller' %}
+        <div class="msg caller"><span class="who">Caller</span>{{ t.text }}</div>
+      {% else %}
+        <div class="msg agent"><span class="who">Receptionist · reply {{ t.number }} · stage {{ t.stage }}</span>{{ t.text }}
+          <div class="steps">
+          {% for e in t.events %}{% set p = e.payload %}
+            {% if e.type == 'guardrail' %}
+              {% if p.triggered %}<span class="chip bad">guardrail {{ p.source }}: {{ p.phrase or p.reason }}</span>
+              {% elif p.error %}<span class="chip warn">guardrail {{ p.source }} error</span>
+              {% else %}<span class="chip good">guardrail {{ p.source }} ok</span>{% endif %}
+            {% elif e.type == 'model' %}<span class="chip">model {{ (p.intents or []) | join(', ') }} · {{ p.ms }} ms</span>
+              {% if p.error %}<span class="chip bad">model error</span>{% endif %}
+            {% elif e.type == 'tool_call' and p.tool == 'search_kb' %}
+              {% for c in p.cited %}<span class="chip accent">cited {{ c }}</span>{% endfor %}
+              {% if not p.cited %}<span class="chip">search: {{ p.query }}</span>{% endif %}
+            {% elif e.type == 'tool_call' and p.tool == 'save_request' %}<span class="chip good">save_request {{ p.request_id }}</span>
+            {% elif e.type == 'check' and not p.passed %}<span class="chip warn">check {{ p.check }}: {{ p.failures | join('; ') }}</span>
+            {% elif e.type == 'handoff' %}<span class="chip bad">handoff: {{ p.reason }}{% if p.severity %} ({{ p.severity }}){% endif %}</span>
+            {% elif e.type == 'route' and p.to %}<span class="chip">{{ p['from'] }} → {{ p.to }}</span>
+            {% elif e.type == 'route' and p.reason %}<span class="chip">{{ p.reason | replace('_', ' ') }}</span>
+            {% elif e.type == 'storage' %}<span class="chip bad">storage error</span>{% endif %}
+          {% endfor %}
+          </div>
+          {% for f in t.flags %}<div class="flag"><b>Flag</b> {{ status_chip(f.status) }}: expected “{{ f.expected }}”{% if f.triage_note %}<br><span class="muted">Triage: {{ f.triage_note }}</span>{% endif %}</div>{% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </section>
+  <aside class="card" aria-label="Call details">
+    <h2>Call</h2>
+    <dl>
+      <dt>Stage</dt><dd>{{ call.stage }}</dd>
+      <dt>Request type</dt><dd>{{ call.request_type or '—' }}</dd>
+      <dt>Ended</dt><dd>{{ call.ended_at.strftime('%H:%M') ~ ' UTC' if call.ended_at else 'no' }}</dd>
+    </dl>
+    {% for r in requests %}
+      <h2 style="margin-top:14px">Request <span class="mono">{{ r.id }}</span> {{ status_chip(r.status) }}</h2>
+      <dl>
+        <dt>Patient</dt><dd>{{ r.name }}</dd>
+        {% if r.caller_name %}<dt>Caller</dt><dd>{{ r.caller_name }}</dd>{% endif %}
+        <dt>Callback</dt><dd class="mono">{{ r.callback_number[:3] }}-{{ r.callback_number[3:6] }}-{{ r.callback_number[6:] }}</dd>
+        <dt>Times</dt><dd>{{ r.preferred_times or '—' }}</dd>
+        <dt>Insurance</dt><dd>{{ r.insurance_carrier or '—' }}</dd>
+        <dt>Reason</dt><dd>{{ r.reason_for_visit or '—' }}</dd>
+      </dl>
+    {% endfor %}
+  </aside>
+</div>
+{% endblock %}

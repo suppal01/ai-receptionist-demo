@@ -1,0 +1,37 @@
+{% macro outcome_chip(outcome) -%}
+  {%- if outcome == 'emergency' %}<span class="chip bad">emergency</span>
+  {%- elif outcome == 'request_saved' %}<span class="chip good">request saved</span>
+  {%- elif outcome == 'handoff' %}<span class="chip warn">handoff</span>
+  {%- elif outcome == 'info_only' %}<span class="chip">info only</span>
+  {%- else %}<span class="chip">in progress</span>{% endif -%}
+{%- endmacro %}
+
+{% macro status_chip(status) -%}
+  {%- if status in ('booked', 'fixed') %}<span class="chip good">{{ status | replace('_', ' ') }}</span>
+  {%- elif status in ('not_booked', 'wont_fix') %}<span class="chip">{{ status | replace('_', ' ') }}</span>
+  {%- elif status == 'triaged' %}<span class="chip accent">triaged</span>
+  {%- else %}<span class="chip warn">{{ status }}</span>{% endif -%}
+{%- endmacro %}
+
+{% macro targets(ts) %}
+<div class="targets">
+  {% for t in ts %}
+  <div class="target">
+    <span>{{ t.name }}</span>
+    <span class="num">{{ t.got }}/{{ t.total }}
+      {% if t.counted %}{% if t.met %}<span class="chip good">met</span>{% else %}<span class="chip bad">missed</span>{% endif %}
+      {% else %}<span class="chip warn">tracked</span>{% endif %}</span>
+    <div class="bar" aria-hidden="true"><span class="{{ 'track' if not t.counted else ('' if t.met else 'miss') }}" style="width: {{ (100 * t.share) | round(1) }}%"></span></div>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro filter_links(base, param, options, current, all_label='All') %}
+<div class="filters">
+  <a href="{{ base }}?{{ param }}=" class="{{ 'on' if not current }}">{{ all_label }}</a>
+  {% for value, label in options %}
+  <a href="{{ base }}?{{ param }}={{ value }}" class="{{ 'on' if current == value }}">{{ label }}</a>
+  {% endfor %}
+</div>
+{% endmacro %}

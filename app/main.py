@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.routes import engine, router
+from app.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -31,3 +32,4 @@ app = FastAPI(
 )
 
 app.include_router(router)
+app.include_router(dashboard_router)

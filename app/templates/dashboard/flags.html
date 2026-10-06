@@ -1,0 +1,37 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/macros.html" import status_chip, filter_links %}
+{% block title %}Flags{% endblock %}
+{% block body %}
+<h1>Flags from testers</h1>
+<p class="muted" style="margin:0">Replies flagged on the test-call page. Each real issue becomes a test case before it is fixed.</p>
+{{ filter_links('/dashboard/flags', 'status', [('new', 'New'), ('triaged', 'Triaged'), ('fixed', 'Fixed'), ('wont_fix', "Won't fix")], status) }}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Flagged (UTC)</th><th>The reply</th><th>Expected instead</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for f in flags %}
+      <tr>
+        <td class="num">{{ f.created_at.strftime('%b %d %H:%M') }}<br><a class="mono" href="/dashboard/calls/{{ f.call_id }}">call {{ f.call_id[:8] }}</a>, reply {{ f.turn }}</td>
+        <td style="max-width:34ch">{{ f.reply }}</td>
+        <td style="max-width:30ch"><b>{{ f.expected }}</b>{% if f.triage_note %}<br><span class="muted">Triage: {{ f.triage_note }}</span>{% endif %}</td>
+        <td>
+          {{ status_chip(f.status) }}
+          <form class="inline" method="post" action="/dashboard/flags/{{ f.id }}/status" style="margin-top:6px; display:grid; gap:4px">
+            <input type="hidden" name="back" value="/dashboard/flags?status={{ status }}">
+            <label class="muted" for="note-{{ f.id }}" style="font-size:0.75rem">Triage note</label>
+            <input type="text" id="note-{{ f.id }}" name="note" placeholder="Cause and fix" value="">
+            <span style="display:flex; gap:4px; flex-wrap:wrap">
+              <button name="status" value="triaged">Triaged</button>
+              <button name="status" value="fixed">Fixed</button>
+              <button name="status" value="wont_fix">Won't fix</button>
+            </span>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="empty">No flags{{ ' with status ' ~ status | replace('_', ' ') if status }}.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

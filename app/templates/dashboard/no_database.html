@@ -1,0 +1,7 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Needs the database{% endblock %}
+{% block body %}
+<h1>The dashboard needs the database</h1>
+<p class="card">This server is running with the in-memory store (no <span class="mono">DATABASE_URL</span>), so there are
+no stored calls, requests, flags or eval runs to show. Set <span class="mono">DATABASE_URL</span> and restart.</p>
+{% endblock %}

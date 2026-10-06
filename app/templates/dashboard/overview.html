@@ -1,0 +1,31 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/macros.html" import targets %}
+{% block title %}Overview{% endblock %}
+{% block body %}
+<h1>Overview</h1>
+<section class="tiles" aria-label="Last 24 hours">
+  <div class="tile"><a href="/dashboard/requests?status=new"><span class="n">{{ new_requests }}</span><span class="muted">New requests</span></a></div>
+  <div class="tile"><a href="/dashboard/flags?status=new"><span class="n">{{ new_flags }}</span><span class="muted">New flags</span></a></div>
+  <div class="tile"><a href="/dashboard/calls?source=api"><span class="n">{{ calls_24h }}</span><span class="muted">Calls in 24 h (chat)</span></a></div>
+  <div class="tile"><a href="/dashboard/calls?outcome=emergency&source=api"><span class="n">{{ emergencies_24h }}</span><span class="muted">Emergency calls in 24 h</span></a></div>
+  <div class="tile"><a href="/dashboard/calls?source=simulator"><span class="n">{{ sim_calls_24h }}</span><span class="muted">Simulated calls in 24 h</span></a></div>
+</section>
+
+<section>
+  <h2>Latest eval run per test set</h2>
+  {% if latest_runs %}
+  <div class="tiles">
+    {% for r in latest_runs %}
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:baseline">
+        <a href="/dashboard/evals/{{ r.id }}"><b>{{ r.test_set | replace('_', ' ') }}</b> v{{ r.version }}</a>
+        {% if r.met %}<span class="chip good">targets met</span>{% else %}<span class="chip bad">target missed</span>{% endif %}
+      </div>
+      <p class="muted" style="margin:4px 0 10px; font-size:0.82rem">{{ r.started_at.strftime('%b %d, %H:%M') }} UTC · {{ r.agent_model }} · {{ r.prompt_version }}</p>
+      {{ targets(r.targets) }}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<p class="card empty">No eval runs yet. Run a test set with <span class="mono">python -m sim.run_eval</span>.</p>{% endif %}
+</section>
+{% endblock %}

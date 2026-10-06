@@ -1,0 +1,25 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/macros.html" import targets %}
+{% block title %}Evals{% endblock %}
+{% block body %}
+<h1>Eval runs</h1>
+<p class="muted" style="margin:0">Targets from the plan (section 5). False alarms are tracked, not required to be zero.</p>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Run</th><th>Test set</th><th>Agent</th><th style="min-width:260px">Targets</th><th>Notes</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+      <tr>
+        <td class="num"><a class="mono" href="/dashboard/evals/{{ r.id }}">{{ r.id }}</a><br>{% if r.met %}<span class="chip good">targets met</span>{% else %}<span class="chip bad">target missed</span>{% endif %}</td>
+        <td>{{ r.test_set | replace('_', ' ') }} v{{ r.test_set_version }}{% if r.test_set_status != 'approved' %} <span class="chip warn">{{ r.test_set_status }}</span>{% endif %}</td>
+        <td class="mono muted">{{ r.agent_model }}<br>{{ r.prompt_version }}</td>
+        <td>{{ targets(r.targets) }}</td>
+        <td class="muted" style="max-width:28ch">{{ r.notes or '' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="empty">No eval runs yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

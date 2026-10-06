@@ -1,0 +1,46 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/macros.html" import status_chip %}
+{% block title %}Requests{% endblock %}
+{% block body %}
+<h1>Request queue</h1>
+<p class="muted" style="margin:0">Every request is a callback to make, not a booked appointment. Mark it after the team has called.</p>
+{% set tests_q = '&include_tests=1' if include_tests else '' %}
+<div style="display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center">
+  <div class="filters">
+    <a href="/dashboard/requests?status={{ tests_q }}" class="{{ 'on' if not status }}">All</a>
+    {% for value, label in [('new', 'New'), ('booked', 'Booked'), ('not_booked', 'Not booked')] %}
+    <a href="/dashboard/requests?status={{ value }}{{ tests_q }}" class="{{ 'on' if status == value }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  {% if include_tests %}<a href="/dashboard/requests?status={{ status }}">Hide requests from test (simulated) calls</a>
+  {% else %}<a href="/dashboard/requests?status={{ status }}&include_tests=1">Include requests from test (simulated) calls</a>{% endif %}
+</div>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Received (UTC)</th><th>Patient</th><th>Callback</th><th>Times</th><th>Insurance</th><th>Reason</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in requests %}
+      <tr>
+        <td class="num">{{ r.created_at.strftime('%b %d %H:%M') }}<br><a class="mono" href="/dashboard/calls/{{ r.call_id }}">call {{ r.call_id[:8] }}</a></td>
+        <td>{{ r.name }}{% if r.caller_name %}<br><span class="muted">caller: {{ r.caller_name }}</span>{% endif %}{% if r.source == 'simulator' %}<br><span class="chip">test call</span>{% endif %}{% if r.type != 'new_patient' %}<br><span class="chip {{ 'bad' if r.type == 'urgent' else 'warn' }}">{{ r.type }}</span>{% endif %}</td>
+        <td class="num mono">{{ r.callback_number[:3] }}-{{ r.callback_number[3:6] }}-{{ r.callback_number[6:] }}</td>
+        <td>{{ r.preferred_times or '—' }}</td>
+        <td>{{ r.insurance_carrier or '—' }}</td>
+        <td>{{ r.reason_for_visit or '—' }}</td>
+        <td>
+          {{ status_chip(r.status) }}
+          <form class="inline" method="post" action="/dashboard/requests/{{ r.id }}/status" style="margin-top:4px">
+            <input type="hidden" name="back" value="/dashboard/requests?status={{ status }}{{ tests_q }}">
+            {% if r.status != 'booked' %}<button name="status" value="booked">Booked</button>{% endif %}
+            {% if r.status != 'not_booked' %}<button name="status" value="not_booked">Not booked</button>{% endif %}
+            {% if r.status != 'new' %}<button name="status" value="new">Reopen</button>{% endif %}
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="empty">No requests{{ ' with status ' ~ status | replace('_', ' ') if status }}.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
